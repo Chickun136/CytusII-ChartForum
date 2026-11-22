@@ -388,10 +388,9 @@ function renderPage(chart, pageIndex, meta = null) {
       ? SPEED_ACCEL_COLOR
       : SPEED_DECEL_COLOR
     : null;
-  // 参考站逻辑：箭头提示的是“下一页”的变速，且只在上扫（dir=-1）的页面着色
-  const upcoming = page.scan_line_direction === -1 ? speedChangeAtPage(chart, pageIndex + 1) : null;
-  const arrowColor = upcoming
-    ? upcoming.type === 'accel'
+  // 变速页的左侧箭头同步着色（红=加速，绿=减速）
+  const arrowColor = change
+    ? change.type === 'accel'
       ? SPEED_ACCEL_COLOR
       : SPEED_DECEL_COLOR
     : '#FFFFFF';
@@ -564,4 +563,6 @@ export {
   buildGallery,
   resolveChartMeta,
   bottomInfo,
+  speedChangeAtPage,
+  pageSpeed,
 };
