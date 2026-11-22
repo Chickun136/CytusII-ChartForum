@@ -59,6 +59,9 @@ const DIFF_STYLES = {
   UNKNOWN: { bg: '#000000', fg: '#FFFFFF' },
 };
 
+const SPEED_ACCEL_COLOR = '#DE595D'; // 参考站箭头加速色 rgb(222,89,93)
+const SPEED_DECEL_COLOR = '#7AD6B3'; // 参考站箭头减速色 rgb(122,214,179)
+
 const CHARACTER_COLORS = {
   PAFF: '#E86A9A',
   'NEKO#ΦωΦ': '#F2C94C',
@@ -199,11 +202,44 @@ function yOf(page, tick) {
     : TOP + t * (BOTTOM - TOP);
 }
 
-/** 页码/扫描线信息；divisions 由页长推算，使 960 tick 的页为 4 格 */
-function gridInfo(page) {
+/** 读取某一 tick 处生效的 BPM（tempo_list 的 value 为每拍微秒数） */
+function bpmAtTick(chart, tick) {
+  const list = [...(chart.tempo_list || [])].sort((a, b) => a.tick - b.tick);
+  let value = list[0]?.value;
+  for (const item of list) {
+    if (item.tick <= tick) value = item.value;
+    else break;
+  }
+  if (!value) return 120;
+  return 60000000 / value;
+}
+
+/** 一屏的 scanline 速度：与页 tick 长度成反比，基准为 2 拍（960 tick） */
+function pageSpeed(chart, page) {
   const len = page.end_tick - page.start_tick;
-  const divisions = clamp(Math.round(3840 / len) || 4, 2, 16);
-  const scanline = Math.round(512 / divisions);
+  const base = 2 * (chart.time_base || 480);
+  return (bpmAtTick(chart, page.start_tick) * base) / len;
+}
+
+/** 本页开始时是否发生变速：tick 变短 -> 加速，变长 -> 减速 */
+function speedChangeAtPage(chart, index) {
+  if (index <= 0 || index >= chart.page_list.length) return null;
+  const current = pageSpeed(chart, chart.page_list[index]);
+  const previous = pageSpeed(chart, chart.page_list[index - 1]);
+  if (Math.abs(current - previous) < 0.01) return null;
+  return {
+    type: current > previous ? 'accel' : 'decel',
+    speed: current,
+    previousSpeed: previous,
+  };
+}
+
+/** 页码/扫描线信息；网格按半拍划分，SCANLINE 速度按 BPM 与页长计算 */
+function gridInfo(page, chart) {
+  const len = page.end_tick - page.start_tick;
+  const timeBase = chart?.time_base || 480;
+  const divisions = clamp(Math.max(1, Math.floor(len / (timeBase / 2))), 1, 32);
+  const scanline = chart ? Number(pageSpeed(chart, page).toFixed(2)) : 128;
   return { divisions, scanline };
 }
 
@@ -216,13 +252,20 @@ function clickNote(cx, cy, ghost = false) {
   ];
 }
 
-function chainNode(cx, cy, isHead = false, ghost = false) {
-  const c = ghost ? COLORS.chainGhost : COLORS.chain;
+function chainNode(cx, cy, isHead = false, ghost = false, isCdrag = false) {
+  const c = isCdrag
+    ? ghost
+      ? COLORS.clickGhost
+      : { outer: COLORS.click.outer, inner: COLORS.click.mid }
+    : ghost
+      ? COLORS.chainGhost
+      : COLORS.chain;
+  const stroke = ghost ? '#050608' : isCdrag ? COLORS.click.outerStroke : COLORS.chain.stroke;
   const ro = isHead ? 23 : 12;
   const ri = isHead ? 16 : 8;
   return [
-    `<circle cx="${fmt(cx)}" cy="${fmt(cy)}" r="${ro}" fill="${c.outer}" stroke="${ghost ? '#050608' : COLORS.chain.stroke}" stroke-width="${isHead ? 3 : 2}"/>`,
-    `<circle cx="${fmt(cx)}" cy="${fmt(cy)}" r="${ri}" fill="${c.inner}" stroke="${ghost ? '#050608' : COLORS.chain.stroke}" stroke-width="${isHead ? 4 : 2}"/>`,
+    `<circle cx="${fmt(cx)}" cy="${fmt(cy)}" r="${ro}" fill="${c.outer}" stroke="${stroke}" stroke-width="${isHead ? 3 : 2}"/>`,
+    `<circle cx="${fmt(cx)}" cy="${fmt(cy)}" r="${ri}" fill="${c.inner}" stroke="${stroke}" stroke-width="${isHead ? 4 : 2}"/>`,
   ];
 }
 
@@ -295,11 +338,13 @@ function renderNote(page, note, ghost = false, isHead = false) {
       }
       return clickNote(cx, cy, ghost);
     case 3:
-      return chainNode(cx, cy, true, ghost);
+      return chainNode(cx, cy, true, ghost, false);
     case 4:
+      return chainNode(cx, cy, isHead, ghost, false);
     case 6:
     case 7:
-      return chainNode(cx, cy, isHead, ghost);
+      // 6/7 为点锁（c-drag）：形状同普通锁链，但使用 click 配色
+      return chainNode(cx, cy, isHead, ghost, true);
     case 5:
       return flickNote(cx, cy, ghost);
     default:
@@ -336,7 +381,20 @@ function renderPage(chart, pageIndex, meta = null) {
   const nextNotes = nextPage
     ? chart.note_list.filter((n) => n.page_index === nextPageIndex)
     : [];
-  const { divisions, scanline } = gridInfo(page);
+  const { divisions, scanline } = gridInfo(page, chart);
+  const change = speedChangeAtPage(chart, pageIndex);
+  const changeColor = change
+    ? change.type === 'accel'
+      ? SPEED_ACCEL_COLOR
+      : SPEED_DECEL_COLOR
+    : null;
+  // 参考站逻辑：箭头提示的是“下一页”的变速，且只在上扫（dir=-1）的页面着色
+  const upcoming = page.scan_line_direction === -1 ? speedChangeAtPage(chart, pageIndex + 1) : null;
+  const arrowColor = upcoming
+    ? upcoming.type === 'accel'
+      ? SPEED_ACCEL_COLOR
+      : SPEED_DECEL_COLOR
+    : '#FFFFFF';
 
   const parts = [];
   parts.push(
@@ -366,16 +424,35 @@ function renderPage(chart, pageIndex, meta = null) {
     );
   }
 
-  // 左侧扫描方向指示
+  // 第 0 页：红色初始速度标记线
+  if (pageIndex === 0) {
+    const y = page.scan_line_direction === 1 ? BOTTOM : TOP;
+    parts.push(
+      `<line x1="0" x2="${W}" y1="${fmt(y)}" y2="${fmt(y)}" stroke="#FF0000" stroke-width="2" stroke-opacity="0.5"/>`,
+    );
+  }
+
+  // 左侧扫描方向指示（有变速时同步变色）
   const indicator =
     page.scan_line_direction === 1
       ? '0,88 0,306 17,306 17,144 32,144'
       : '0,306 0,88 17,88 17,250 32,250';
-  parts.push(`<polygon points="${indicator}" fill="#FFFFFF" fill-opacity="0.85"/>`);
+  parts.push(
+    `<polygon points="${indicator}" fill="${arrowColor}" fill-opacity="0.85"/>`,
+  );
 
   // 本页音符（实色）
   parts.push(...chainLinks(chart, pageIndex, notes, false));
   for (const n of notes) parts.push(...renderNote(page, n, false, heads.has(n.id)));
+
+  // 变速横线画在音符之上，确保在页首边界清晰可见（红=加速，绿=减速）
+  if (change) {
+    const y = page.scan_line_direction === 1 ? BOTTOM : TOP;
+    parts.push(
+      `<line x1="0" x2="${W}" y1="${fmt(y)}" y2="${fmt(y)}" stroke="#050608" stroke-width="5" stroke-opacity="0.55"/>`,
+      `<line x1="0" x2="${W}" y1="${fmt(y)}" y2="${fmt(y)}" stroke="${changeColor}" stroke-width="3" stroke-opacity="0.95"/>`,
+    );
+  }
 
   // 顶部信息
   parts.push(
