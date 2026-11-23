@@ -100,7 +100,7 @@ for (const input of files) {
 main{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:18px;padding:22px 28px 60px}
 figure{margin:0;background:#111418;border:1px solid #1e232a;border-radius:8px;padding:10px}img{width:100%;display:block;border-radius:4px}figcaption{font-size:12px;color:#8b929c;text-align:center;margin-top:6px}</style>
 <header><h1>${name}</h1><p>${pages.length} 页 / ${notes.length} 音符 · 校验结果见 report.json</p></header>
-<main>${pageStats.map((s) => `<figure><a href="page-${String(s.page).padStart(3, '0')}.svg" target="_blank"><img loading="lazy" src="page-${String(s.page).padStart(3, '0')}.svg"></a><figcaption>Page ${s.page} · ${s.notes} notes</figcaption></figure>`).join('')}</main>`;
+<main>${pageStats.map((s) => `<figure><a href="page-${String(s.page).padStart(3, '0')}.svg" target="_blank"><img loading="lazy" src="page-${String(s.page).padStart(3, '0')}.svg"></a><figcaption>${s.notes} notes</figcaption></figure>`).join('')}</main>`;
   fs.writeFileSync(path.join(outDir, 'index.html'), gallery, 'utf8');
 
   const result = {

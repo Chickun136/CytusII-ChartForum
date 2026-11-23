@@ -62,33 +62,6 @@ const DIFF_STYLES = {
 const SPEED_ACCEL_COLOR = '#DE595D'; // 参考站箭头加速色 rgb(222,89,93)
 const SPEED_DECEL_COLOR = '#7AD6B3'; // 参考站箭头减速色 rgb(122,214,179)
 
-const CHARACTER_COLORS = {
-  PAFF: '#E86A9A',
-  'NEKO#ΦωΦ': '#F2C94C',
-  'ROBO_Head': '#56CCF2',
-  Ivy: '#27AE60',
-  'Crystal PuNK': '#BB6BD9',
-  Vanessa: '#EB5757',
-  'Bo Bo': '#F2994A',
-  'Graff.J': '#9B51E0',
-  'Kizuna AI': '#66E3E3',
-  Alice: '#F2C94C',
-  Hans: '#6D9EEB',
-  ConneR: '#C9A227',
-  Cherry: '#E15A97',
-  Xenon: '#E74C3C',
-  JOE: '#F2994A',
-  Sagar: '#2D9CDB',
-  Rin: '#BB6BD9',
-  Aroma: '#27AE60',
-  Nora: '#2D9CDB',
-  NEKO_II: '#F2C94C',
-  Ilka: '#9B51E0',
-  Miku: '#39C5BB',
-  Amiya: '#2D9CDB',
-  Kaf: '#7B61FF',
-};
-
 function escapeXml(text) {
   return String(text)
     .replace(/&/g, '&amp;')
@@ -115,23 +88,6 @@ function fitText(text, maxWidth, size) {
     out += ch;
   }
   return `${out}…`;
-}
-
-function characterColor(name) {
-  if (!name) return '#7F8C8D';
-  if (CHARACTER_COLORS[name]) return CHARACTER_COLORS[name];
-  let hash = 0;
-  for (const ch of name) hash = (hash * 31 + ch.codePointAt(0)) % 360;
-  return `hsl(${hash} 55% 48%)`;
-}
-
-function monogram(name) {
-  if (!name) return '?';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2 && /^[A-Za-z]/.test(parts[0]) && /^[A-Za-z]/.test(parts[1])) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-  return [...name].slice(0, 2).join('');
 }
 
 let metadataCache;
@@ -168,9 +124,7 @@ function bottomInfo(meta) {
   if (!meta) return [];
   const bandY = 384;
   const bandH = H - bandY;
-  const color = characterColor(meta.character);
-  const logo = escapeXml(monogram(meta.character));
-  const title = escapeXml(fitText(meta.title, 300, 15));
+  const title = escapeXml(fitText(meta.title, 380, 15));
   const label = escapeXml(`${meta.difficulty}${meta.level ? ` ${meta.level}` : ''}`);
   const badgeWidth = Math.max(70, textWidth(label, 13) + 22);
   const badgeX = W - 12 - badgeWidth;
@@ -178,10 +132,8 @@ function bottomInfo(meta) {
   return [
     `<rect x="0" y="${bandY}" width="${W}" height="${bandH}" fill="#0A0C0F"/>`,
     `<line x1="0" x2="${W}" y1="${bandY}" y2="${bandY}" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1"/>`,
-    // 左下：角色标识 + 曲名
-    `<rect x="12" y="390" width="24" height="24" rx="6" fill="${color}"/>`,
-    `<text x="24" y="406.5" fill="#0B0D10" font-family="${FONT}" font-size="11" font-weight="700" text-anchor="middle">${logo}</text>`,
-    `<text x="44" y="407" fill="#E8E8EC" font-family="${FONT}" font-size="15">${title}</text>`,
+    // 左下：仅曲名
+    `<text x="12" y="407" fill="#E8E8EC" font-family="${FONT}" font-size="15">${title}</text>`,
     // 右下：难度徽标（配色与参考站 ct2style.css 一致）
     `<rect x="${fmt(badgeX)}" y="391" width="${fmt(badgeWidth)}" height="22" rx="5" fill="${diffStyle.bg}"/>`,
     `<text x="${fmt(badgeX + badgeWidth / 2)}" y="406.5" fill="${diffStyle.fg}" font-family="${FONT}" font-size="13" font-weight="700" text-anchor="middle">${label}</text>`,
@@ -290,6 +242,68 @@ function chainHeadIds(chart) {
   return heads;
 }
 
+/** 跨屏长按（type 2）：头部 */
+function longHoldHead(cx, cy, ghost = false) {
+  const white = ghost ? '#3F3F3F' : '#FFFFFF';
+  const gold = ghost ? '#3F3319' : '#FFCC66';
+  return [
+    `<circle cx="${fmt(cx)}" cy="${fmt(cy)}" r="30" fill="${white}" stroke="${ghost ? '#050608' : '#171822'}" stroke-width="6"/>`,
+    `<rect x="${fmt(cx - 34)}" y="${fmt(cy - 2)}" width="67" height="4" fill="${white}"/>`,
+    `<circle cx="${fmt(cx)}" cy="${fmt(cy)}" r="22" fill="${gold}"/>`,
+    `<rect x="${fmt(cx - 7)}" y="${fmt(cy - 23)}" width="14" height="46" fill="${white}"/>`,
+  ];
+}
+
+/** 跨屏长按（type 2）：某一段主体；ended 表示长按在本页结束 */
+function longHoldBody(cx, yStart, yEnd, ended, ghost = false) {
+  const white = ghost ? '#3F3F3F' : '#FFFFFF';
+  const gold = ghost ? '#3F3319' : '#FFCC66';
+  const parts = [
+    `<line x1="${fmt(cx - 15)}" x2="${fmt(cx - 15)}" y1="${fmt(yStart)}" y2="${fmt(yEnd)}" stroke="${white}" stroke-width="4"/>`,
+    `<line x1="${fmt(cx + 15)}" x2="${fmt(cx + 15)}" y1="${fmt(yStart)}" y2="${fmt(yEnd)}" stroke="${white}" stroke-width="4"/>`,
+    `<line x1="${fmt(cx)}" x2="${fmt(cx)}" y1="${fmt(yStart)}" y2="${fmt(yEnd)}" stroke="${gold}" stroke-width="20" stroke-dasharray="4,4"/>`,
+  ];
+  if (ended) {
+    parts.push(
+      `<line x1="${fmt(cx - 20)}" x2="${fmt(cx + 20)}" y1="${fmt(yEnd)}" y2="${fmt(yEnd)}" stroke="${white}" stroke-width="5"/>`,
+    );
+  }
+  return parts;
+}
+
+const longHoldCache = new WeakMap();
+function longHoldsOf(chart) {
+  if (!longHoldCache.has(chart)) {
+    longHoldCache.set(
+      chart,
+      chart.note_list.filter((n) => n.type === 2 && n.hold_tick > 0),
+    );
+  }
+  return longHoldCache.get(chart);
+}
+
+/** 生成本页可见的长按主体段（首段/中间段/末段） */
+function longHoldBodySegments(chart, page, ghost = false) {
+  const out = [];
+  for (const n of longHoldsOf(chart)) {
+    const end = n.tick + n.hold_tick;
+    if (end <= page.start_tick || n.tick >= page.end_tick) continue;
+    const segStart = Math.max(n.tick, page.start_tick);
+    const segEnd = Math.min(end, page.end_tick);
+    if (segEnd <= segStart) continue;
+    out.push(
+      ...longHoldBody(
+        xOf(n.x),
+        yOf(page, segStart),
+        yOf(page, segEnd),
+        end <= page.end_tick,
+        ghost,
+      ),
+    );
+  }
+  return out;
+}
+
 function holdNote(cx, yStart, yEnd, ghost = false) {
   const color = ghost ? COLORS.holdGhost : COLORS.hold;
   const y1 = clamp(yStart, TOP, BOTTOM);
@@ -332,11 +346,13 @@ function renderNote(page, note, ghost = false, isHead = false) {
   const cy = yOf(page, note.tick);
   switch (note.type) {
     case 1:
-    case 2:
       if (note.hold_tick > 0) {
         return holdNote(cx, cy, yOf(page, note.tick + note.hold_tick), ghost);
       }
       return clickNote(cx, cy, ghost);
+    case 2:
+      // 跨屏长按由 renderPage 单独绘制头部与分段主体
+      return note.hold_tick > 0 ? [] : clickNote(cx, cy, ghost);
     case 3:
       return chainNode(cx, cy, true, ghost, false);
     case 4:
@@ -409,6 +425,11 @@ function renderPage(chart, pageIndex, meta = null) {
     for (const n of nextNotes) parts.push(...renderNote(nextPage, n, true, heads.has(n.id)));
     parts.push('</g>');
   }
+  if (nextPage) {
+    parts.push('<g class="ghost">');
+    parts.push(...longHoldBodySegments(chart, nextPage, true));
+    parts.push('</g>');
+  }
 
   // 扫描线网格
   parts.push(
@@ -440,6 +461,14 @@ function renderPage(chart, pageIndex, meta = null) {
     `<polygon points="${indicator}" fill="${arrowColor}" fill-opacity="0.85"/>`,
   );
 
+  // 跨屏长按：先画本页主体段，再画起始页的头部
+  parts.push(...longHoldBodySegments(chart, page, false));
+  for (const n of notes) {
+    if (n.type === 2 && n.hold_tick > 0) {
+      parts.push(...longHoldHead(xOf(n.x), yOf(page, n.tick)));
+    }
+  }
+
   // 本页音符（实色）
   parts.push(...chainLinks(chart, pageIndex, notes, false));
   for (const n of notes) parts.push(...renderNote(page, n, false, heads.has(n.id)));
@@ -453,10 +482,10 @@ function renderPage(chart, pageIndex, meta = null) {
     );
   }
 
-  // 顶部信息
+  // 顶部信息：页码左对齐，SCANLINE 速度右对齐
   parts.push(
-    `<text x="${W * 0.105}" y="34.56" fill="#AAAAAA" font-family="${FONT}" font-size="30" font-weight="bold" text-anchor="end">${pageIndex}</text>`,
-    `<text x="435" y="21" fill="#FFFFFF" font-family="${FONT}" font-size="18" font-weight="bold" text-anchor="end">SCANLINE:</text>`,
+    `<text x="12" y="21" fill="#AAAAAA" font-family="${FONT}" font-size="18" font-weight="bold" text-anchor="start">${pageIndex}</text>`,
+    `<text x="452" y="21" fill="#FFFFFF" font-family="${FONT}" font-size="18" font-weight="bold" text-anchor="end">SCANLINE:</text>`,
     `<text x="507" y="21" fill="#FFFFFF" font-family="${FONT}" font-size="18" font-weight="bold" text-anchor="end">${scanline}</text>`,
   );
   parts.push(...bottomInfo(meta));
@@ -482,7 +511,7 @@ function buildGallery(outDir, pages, meta) {
   const items = pages
     .map(
       (p) =>
-        `<figure><a href="page-${String(p).padStart(3, '0')}.svg" target="_blank"><img loading="lazy" src="page-${String(p).padStart(3, '0')}.svg" alt="page ${p}"></a><figcaption>Page ${p}</figcaption></figure>`,
+        `<figure><a href="page-${String(p).padStart(3, '0')}.svg" target="_blank"><img loading="lazy" src="page-${String(p).padStart(3, '0')}.svg" alt="page ${p}"></a></figure>`,
     )
     .join('\n');
   return `<!DOCTYPE html>
