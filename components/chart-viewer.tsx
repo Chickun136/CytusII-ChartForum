@@ -12,7 +12,6 @@ export type ChartSummary = {
   jsonFile: string;
 };
 
-const ZOOM_LEVELS = [1, 1.5, 2];
 const PAGE_STEPS = [-10, -1, 1, 10];
 const PAGE_COLUMNS = 4;
 const CELL_WIDTH = 512;
@@ -41,7 +40,6 @@ export function ChartViewer({
     return chaos >= 0 ? chaos : 0;
   });
   const [page, setPage] = useState(0);
-  const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState({ done: 0, total: 0 });
@@ -79,7 +77,6 @@ export function ChartViewer({
   const selectChart = (index: number) => {
     setSelected(index);
     setPage(0);
-    setZoom(1);
   };
 
   const toggleFullscreen = async () => {
@@ -264,8 +261,7 @@ export function ChartViewer({
         <img
           src={imageUrl}
           alt={`${chart.difficultyName} 第 ${page + 1} 页`}
-          className="block h-auto max-w-none"
-          style={{ width: `${zoom * 100}%` }}
+          className="block h-auto w-full max-w-none"
         />
       </div>
 
@@ -302,24 +298,6 @@ export function ChartViewer({
             aria-label="选择页码"
             className="h-1.5 w-full max-w-xs cursor-pointer accent-cyan-400"
           />
-        </div>
-
-        <div className="flex items-center gap-1">
-          {ZOOM_LEVELS.map((level) => (
-            <button
-              key={level}
-              type="button"
-              onClick={() => setZoom(level)}
-              aria-pressed={zoom === level}
-              className={`rounded-md border px-2.5 py-1.5 text-xs transition ${
-                zoom === level
-                  ? 'border-cyan-400/70 bg-cyan-400/10 text-cyan-200'
-                  : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'
-              }`}
-            >
-              {Math.round(level * 100)}%
-            </button>
-          ))}
         </div>
       </div>
 

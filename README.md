@@ -68,7 +68,7 @@ GET /api/search?q=         搜索 JSON 接口
 
 - 搜索覆盖曲名、艺术家、角色、拼音全拼、拼音首字母与外号，例如 `AIAIAI`、`bwfm`、`绊爱`、`Kizuna`。
 - 外号维护在 `data/metadata/aliases.json`，导入时同步到 `Alias` 表。
-- 详情页默认选中 CHAOS，支持 100/150/200% 缩放、全屏、键盘左右键翻页。
+- 详情页默认选中 CHAOS，支持全屏、键盘左右键翻页，可导出整谱 PNG。
 
 ## 谱面渲染 API 与缓存（Sprint 3）
 
