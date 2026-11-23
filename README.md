@@ -98,6 +98,10 @@ npm run render:bench -- ai001_001_2 0
 环境变量：`CHART_DATA_DIR`（谱面目录）、`CHART_CACHE_DIR`（缓存目录）。
 核对结果见 [docs/render-coverage.md](docs/render-coverage.md)。
 
+## 部署
+
+自建服务器（Ubuntu + Nginx + PM2 + SQLite/谱面目录挂载）的完整步骤见 [docs/deployment.md](docs/deployment.md)。当前尚未购买服务器与域名，线上地址待补。
+
 ## 目录
 
 ```text
