@@ -1,6 +1,6 @@
 # Cytus II Chart Forum
 
-Cytus II 谱面查询与交流站。当前完成 Sprint 4：支持歌名/外号/拼音搜索，曲目详情页可切换难度并缩放、翻页查看谱面。
+Cytus II 谱面查询与交流站。支持歌名/外号/拼音搜索、角色与难度筛选、排序分页、谱面查看与整谱 PNG 导出，并提供账号系统（注册/登录、头像昵称、Master/Admin/Player）。
 
 ## 技术栈
 
@@ -76,6 +76,15 @@ GET /api/search?q=         搜索 JSON 接口
 ## 封面资源
 
 曲绘放入 `public/covers/<songId>.webp`，再把 `Song.coverUrl` 填成 `/covers/<songId>.webp` 即可显示；未填写时卡片显示占位块。上线后可改为对象存储或 CDN 的绝对 URL。
+
+## 账号系统
+
+- 顶部菜单：谱面列表 / 个人账号 / 活动（开发中）；Master / Admin 额外显示「管理」
+- 注册需要邮箱、密码与确认密码；**第一个注册的账号自动成为 Master（内部账号）**，之后注册为 Player
+- 角色：Master（分配管理员、管理活动）、Admin（管理后台 / 活动）、Player（普通玩家）
+- 个人账号支持修改昵称、上传头像（PNG / JPG / WebP，≤1 MB）；Capso 默认 0，活动上线后按活动规则增加
+- 会话使用 HttpOnly Cookie（30 天），密码用 Node `scrypt` 哈希；头像存 `data/avatars`，可用 `AVATAR_DIR` 覆盖，部署时需持久化该目录
+- 暂未接入邮箱验证码与登录限流，仅做课程演示用途
 
 ## 谱面渲染 API 与缓存（Sprint 3）
 
