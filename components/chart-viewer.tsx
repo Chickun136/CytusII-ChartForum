@@ -16,7 +16,7 @@ const ZOOM_LEVELS = [1, 1.5, 2];
 const PAGE_STEPS = [-10, -1, 1, 10];
 const PAGE_COLUMNS = 4;
 const CELL_WIDTH = 512;
-const CELL_HEIGHT = 420;
+const CELL_HEIGHT = 384; // 512x420 的页面里 y=384 以下是曲名/难度页脚，导出时裁掉
 const EXPORT_SCALE = 2;
 const MAX_CANVAS_SIDE = 60000;
 const MAX_CANVAS_AREA = 120_000_000;
@@ -147,7 +147,17 @@ export function ChartViewer({
         const nextX = Math.round(((column + 1) * canvas.width) / columns);
         const y = Math.round((row * canvas.height) / rows);
         const nextY = Math.round(((row + 1) * canvas.height) / rows);
-        context.drawImage(image, x, y, nextX - x, nextY - y);
+        context.drawImage(
+          image,
+          0,
+          0,
+          CELL_WIDTH,
+          CELL_HEIGHT,
+          x,
+          y,
+          nextX - x,
+          nextY - y,
+        );
       } finally {
         URL.revokeObjectURL(svgUrl);
       }
