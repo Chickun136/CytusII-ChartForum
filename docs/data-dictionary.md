@@ -1,0 +1,175 @@
+# 数据字典（Sprint 1）
+
+本文档记录谱面 JSON、曲目元数据与数据库字段的含义。数据管线对应 `scripts/import-charts.mjs`。
+
+## 1. 数据来源与范围
+
+| 数据 | 位置 | 说明 |
+| --- | --- | --- |
+| 谱面 JSON | 工作区 `Cytus II谱面数据/Cytus II 全谱面 5.3/` | 2223 个文件，约 234 MB，不进入公开仓库 |
+| 曲目元数据 | `data/metadata/songs.json` | 695 首，由 ct2view 页头 + Cytus II Wiki 生成 |
+| 本地数据库 | `prisma/dev.db`（SQLite） | 由 Prisma 生成，已在 `.gitignore` 中忽略 |
+| 表结构 | `prisma/schema.prisma` | 迁移文件在 `prisma/migrations/` |
+
+Sprint 1 默认导入前 30 首曲目及其全部难度（102 张谱面）。
+
+## 2. 文件名规则
+
+```text
+ai001_001_2.json
+└─ 曲包     └─ 曲目    └─ 难度序号
+```
+
+- 曲目 ID：`ai001_001`
+- 难度序号：`0` EASY、`1` HARD、`2` CHAOS、`3` GLITCH、`4` CRASH、`5` DREAM、`6` DROP
+- 谱面 ID（`Chart.id`）：去掉 `.json` 的完整文件名，如 `ai001_001_2`
+
+## 3. 谱面 JSON 顶层字段
+
+| 字段 | 含义 |
+| --- | --- |
+| `format_version` | 谱面格式版本 |
+| `time_base` | 每拍 tick 数，实测为 480 |
+| `start_offset_time` | 谱面开始偏移（秒） |
+| `page_list` | 分页（每页一屏） |
+| `tempo_list` | 变速/节拍列表 |
+| `event_order_list` | 演奏事件顺序，本项目暂未使用 |
+| `note_list` | 音符列表 |
+
+### 3.1 `page_list[]`
+
+| 字段 | 含义 |
+| --- | --- |
+| `start_tick` | 本页起始 tick |
+| `end_tick` | 本页结束 tick |
+| `scan_line_direction` | `1` 从下往上扫，`-1` 从上往下扫 |
+
+页长 `len = end_tick - start_tick`。每页扫描速度：
+
+```text
+BPM = 60,000,000 / tempo.value
+SCANLINE = BPM × 960 / len
+```
+
+页长减半时 SCANLINE 翻倍，两者成反比。
+
+### 3.2 `tempo_list[]`
+
+| 字段 | 含义 |
+| --- | --- |
+| `tick` | 生效 tick |
+| `value` | 每拍微秒数，`BPM = 60,000,000 / value` |
+
+当前页速度与上一页不同即视为变速：加速画红色扫线/箭头，减速画绿色。
+
+### 3.3 `note_list[]`
+
+| 字段 | 含义 |
+| --- | --- |
+| `page_index` | 所属页序号 |
+| `type` | 音符类型，见下表 |
+| `id` | 音符唯一 ID |
+| `tick` | 音符所在 tick |
+| `x` | 横向坐标，`-1..1`；渲染为 `cx = 42 + 427 × x` |
+| `has_sibling` | 是否有镜像/幽灵音符 |
+| `hold_tick` | 长按结束 tick（长按类） |
+| `next_id` | 锁链下一节点 ID |
+| `is_forward` | 锁链方向标记 |
+
+纵向渲染：`progress = (tick - start_tick) / len`，可玩区 `y=51..345`。
+
+- `scan_line_direction = 1`：`y = 345 - progress × 294`
+- `scan_line_direction = -1`：`y = 51 + progress × 294`
+
+### 3.4 音符类型
+
+| type | 含义 | 渲染 |
+| --- | --- | --- |
+| 0 | 点击 | 三层圆 |
+| 1 | 长按 | 粗虚线 + 头部 |
+| 2 | 跨屏长按 | 金色主体 + 白色导轨，按页分段 |
+| 3 | 锁链头 | 大号紫色圆 |
+| 4 | 锁链节点 | 小号紫色圆 + 虚线 |
+| 5 | 闪烁（flick） | 菱形箭头 |
+| 6 | c-drag（点锁） | 锁链形状 + click 配色 |
+| 7 | c-drag（点锁） | 同上 |
+| 8 / 9 | DREAM / DROP 专属 | 尚未实现，校验脚本会报错 |
+
+链头判定：`type 3`，或没有任何其他链节点的 `next_id` 指向它。
+
+## 4. 曲目元数据 `songs.json`
+
+| 字段 | 含义 |
+| --- | --- |
+| `id` | 曲目 ID，如 `ai001_001` |
+| `remoteId` | ct2view 中的 ID（个别曲包前缀不同，如 `graffj001`） |
+| `title` | 曲名 |
+| `artist` | 艺术家 |
+| `character` | 曲目角色 |
+| `bpm` | 基准 BPM |
+| `scanline` | 扫描线速度范围文本 |
+| `combo` | 最大 Combo（来自 ct2view） |
+| `pageCount` | 页数（来自 ct2view） |
+| `chaosLevel` | CHAOS 等级文本 |
+| `wikiMatched` | 是否在 Wiki 中匹配到难度等级 |
+| `charts` | 难度序号 → `{ difficulty, level, file }` |
+
+## 5. 数据库表
+
+### 5.1 `Song`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | String @id | 曲目 ID |
+| `title` | String | 曲名 |
+| `artist` | String | 艺术家 |
+| `character` | String? | 角色 |
+| `category` | String? | 分类/曲包，暂未填充 |
+| `bpm` | Int? | 基准 BPM |
+| `coverUrl` | String? | 封面，暂未填充 |
+| `metadataSource` | String? | 元数据来源 |
+| `createdAt` | DateTime | 入库时间 |
+
+### 5.2 `Chart`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | String @id | 谱面 ID（文件名去扩展名） |
+| `songId` | String | 所属曲目 |
+| `difficultyIndex` | Int | 0–6 |
+| `difficultyName` | String | EASY / HARD / CHAOS / … |
+| `difficultyLevel` | String? | 等级，CRASH 为 α/β/γ |
+| `jsonFile` | String | 原始 JSON 文件名 |
+| `pageCount` | Int | 页数 |
+| `noteCount` | Int | 音符数 |
+| `viewCount` | Int | 访问量，P1 使用 |
+| `createdAt` | DateTime | 入库时间 |
+
+唯一约束：`(songId, difficultyIndex)`。
+
+### 5.3 `Alias`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | Int @id | 自增主键 |
+| `songId` | String | 所属曲目 |
+| `alias` | String | 外号/俗称 |
+| `source` | String? | 来源 |
+| `createdAt` | DateTime | 入库时间 |
+
+## 6. 数据管线命令
+
+```powershell
+npm run db:push                 # 同步 schema（开发时）
+npm run db:import               # 默认导入前 30 首
+node scripts/import-charts.mjs --all           # 导入全部 695 首
+node scripts/import-charts.mjs --limit 50 --reset
+npm run db:search -- AIAIAI     # 按歌名/艺术家/外号查询
+```
+
+## 7. 已知限制
+
+- Wiki 难度匹配 680/695，剩余 15 首等级为 `null`。
+- `category`、`coverUrl` 暂未填充。
+- DREAM / DROP 的 `type 8/9` 尚未实现。
+- 原始谱面 JSON 与 SQLite 数据库均不提交公开仓库。

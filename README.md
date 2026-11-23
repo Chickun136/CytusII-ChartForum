@@ -41,6 +41,23 @@ node --use-system-ca scripts/fetch-metadata.mjs
 
 曲目索引：`data/metadata/songs.json`（695 首，含难度与等级）。
 
+## 数据库（Sprint 1）
+
+项目使用 Prisma + SQLite。首次运行：
+
+```powershell
+# 在仓库根目录创建 .env（内容同 .env.example）：
+# DATABASE_URL="file:./dev.db"
+
+npm run db:push        # 建表（或 npx prisma migrate dev）
+npm run db:import      # 默认导入前 30 首曲目
+npm run db:search -- AIAIAI
+```
+
+- 导入全部曲目：`node scripts/import-charts.mjs --all`
+- 清空后重新导入：`npm run db:import -- --reset`
+- 表结构与字段含义见 [docs/data-dictionary.md](docs/data-dictionary.md)
+
 ## 目录
 
 ```text
