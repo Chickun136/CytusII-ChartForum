@@ -14,11 +14,12 @@ export type ChartSummary = {
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const PAGE_STEPS = [-10, -1, 1, 10];
-const PAGE_ROWS = 4;
+const PAGE_COLUMNS = 4;
 const CELL_WIDTH = 512;
 const CELL_HEIGHT = 420;
-const MAX_CANVAS_WIDTH = 60000;
-const MAX_CANVAS_AREA = 100_000_000;
+const EXPORT_SCALE = 2;
+const MAX_CANVAS_SIDE = 60000;
+const MAX_CANVAS_AREA = 120_000_000;
 const DOWNLOAD_BATCH = 8;
 
 function sanitizeFileName(value: string) {
@@ -102,16 +103,16 @@ export function ChartViewer({
     setDownloadError('');
     setDownloadProgress({ done: 0, total: chart.pageCount });
 
-    const maxRows = Math.min(PAGE_ROWS, chart.pageCount);
-    const columns = Math.ceil(chart.pageCount / maxRows);
+    const columns = Math.min(PAGE_COLUMNS, chart.pageCount);
+    const rows = Math.ceil(chart.pageCount / columns);
     const rawWidth = columns * CELL_WIDTH;
-    const rawHeight = maxRows * CELL_HEIGHT;
-    const widthScale = rawWidth > MAX_CANVAS_WIDTH ? MAX_CANVAS_WIDTH / rawWidth : 1;
-    const areaScale =
-      rawWidth * rawHeight > MAX_CANVAS_AREA
-        ? Math.sqrt(MAX_CANVAS_AREA / (rawWidth * rawHeight))
-        : 1;
-    const scale = Math.min(widthScale, areaScale);
+    const rawHeight = rows * CELL_HEIGHT;
+    const scale = Math.min(
+      EXPORT_SCALE,
+      MAX_CANVAS_SIDE / rawWidth,
+      MAX_CANVAS_SIDE / rawHeight,
+      Math.sqrt(MAX_CANVAS_AREA / (rawWidth * rawHeight)),
+    );
 
     const canvas = document.createElement('canvas');
     canvas.width = Math.floor(rawWidth * scale);
@@ -140,12 +141,12 @@ export function ChartViewer({
           image.onerror = () => reject(new Error(`第 ${pageIndex + 1} 页解码失败`));
           image.src = svgUrl;
         });
-        const column = Math.floor(pageIndex / maxRows);
-        const row = pageIndex % maxRows;
+        const column = pageIndex % columns;
+        const row = Math.floor(pageIndex / columns);
         const x = Math.round((column * canvas.width) / columns);
         const nextX = Math.round(((column + 1) * canvas.width) / columns);
-        const y = Math.round((row * canvas.height) / maxRows);
-        const nextY = Math.round(((row + 1) * canvas.height) / maxRows);
+        const y = Math.round((row * canvas.height) / rows);
+        const nextY = Math.round(((row + 1) * canvas.height) / rows);
         context.drawImage(image, x, y, nextX - x, nextY - y);
       } finally {
         URL.revokeObjectURL(svgUrl);
