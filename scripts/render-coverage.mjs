@@ -40,7 +40,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   dataDir: path.relative(root, dataDir).replace(/\\/g, '/'),
   mode,
-  rendererVersion: 'v1',
+  rendererVersion: 'v2',
   charts: { total: files.length, rendered: 0, failed: 0 },
   pages: { total: 0, rendered: 0 },
   notes: 0,
