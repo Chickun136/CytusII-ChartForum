@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { logoutAction } from '@/app/account/actions';
 import { getCurrentUser } from '@/lib/auth';
 import { canAccessAdmin, roleLabel, roleStyle } from '@/lib/roles';
+import { SiteNav } from './site-nav';
 
 export async function SiteHeader() {
   const user = await getCurrentUser();
@@ -15,22 +16,7 @@ export async function SiteHeader() {
         >
           Cytus II
         </Link>
-        <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-zinc-400">
-          <Link href="/" className="transition hover:text-cyan-200">
-            谱面列表
-          </Link>
-          <Link href="/account" className="transition hover:text-cyan-200">
-            个人账号
-          </Link>
-          <Link href="/events" className="transition hover:text-cyan-200">
-            活动
-          </Link>
-          {user && canAccessAdmin(user.role) && (
-            <Link href="/admin" className="transition hover:text-cyan-200">
-              管理
-            </Link>
-          )}
-        </nav>
+        <SiteNav showAdmin={Boolean(user && canAccessAdmin(user.role))} />
       </div>
 
       <div className="flex items-center gap-2 text-xs">
