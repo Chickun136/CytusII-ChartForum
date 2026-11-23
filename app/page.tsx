@@ -1,10 +1,21 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { Suspense } from 'react';
-import { FilterBar } from '@/components/filter-bar';
+import { Pagination } from '@/components/pagination';
+import { SearchControls } from '@/components/search-controls';
 import { SongCard } from '@/components/song-card';
-import { getCharacters, searchSongs } from '@/lib/songs';
+import { getCharacters, getSongCount, searchSongs, type SongSort } from '@/lib/songs';
 
-type SearchParams = Promise<{ q?: string; chars?: string; min?: string; max?: string }>;
+type SearchParams = Promise<{
+  q?: string;
+  chars?: string;
+  min?: string;
+  max?: string;
+  sort?: string;
+  page?: string;
+}>;
+
+const MOBILE_UA = /Mobi|Android|iPhone|iPod|Windows Phone/i;
 
 export default function Home({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -36,10 +47,10 @@ export default function Home({ searchParams }: { searchParams: SearchParams }) {
 }
 
 async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
-  const { q, chars, min, max } = await searchParams;
+  const { q, chars, min, max, sort, page } = await searchParams;
   const query = (q ?? '').trim();
 
-  const characters = await getCharacters();
+  const [characters, libraryCount] = await Promise.all([getCharacters(), getSongCount()]);
   const selectedCharacters = (chars ?? '')
     .split(',')
     .filter((character) => characters.includes(character));
@@ -53,6 +64,8 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
   const maxDifficulty = parseLevel(max, 16);
   const lowerDifficulty = Math.min(minDifficulty, maxDifficulty);
   const upperDifficulty = Math.max(minDifficulty, maxDifficulty);
+  const sortValue: SongSort =
+    sort === 'difficulty-desc' || sort === 'difficulty-asc' ? sort : 'default';
   const hasFilters =
     selectedCharacters.length > 0 || lowerDifficulty > 1 || upperDifficulty < 16;
 
@@ -60,56 +73,54 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
     characters: selectedCharacters,
     minDifficulty: lowerDifficulty,
     maxDifficulty: upperDifficulty,
+    sort: sortValue,
   });
+
+  const userAgent = (await headers()).get('user-agent') ?? '';
+  const pageSize = MOBILE_UA.test(userAgent) ? 10 : 40;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const requestedPage = Number(page);
+  const currentPage = Math.min(
+    totalPages,
+    Math.max(
+      1,
+      Number.isFinite(requestedPage) && requestedPage >= 1 ? Math.floor(requestedPage) : 1,
+    ),
+  );
+  const startIndex = (currentPage - 1) * pageSize;
+  const pageSongs = songs.slice(startIndex, startIndex + pageSize);
+  const rangeStart = pageSongs.length > 0 ? startIndex + 1 : 0;
+  const rangeEnd = startIndex + pageSongs.length;
 
   return (
     <section className="mt-8">
-      <form key={query} action="/" method="get" className="flex flex-col gap-3 sm:flex-row">
-        <label htmlFor="search-input" className="sr-only">
-          搜索曲目
-        </label>
-        <input
-          id="search-input"
-          name="q"
-          type="search"
-          defaultValue={query}
-          placeholder="输入歌名、拼音、首字母或外号…"
-          autoComplete="off"
-          className="h-12 flex-1 rounded-xl border border-zinc-700 bg-zinc-900 px-4 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
-        />
-        <button
-          type="submit"
-          className="h-12 rounded-xl bg-cyan-500 px-6 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-400"
-        >
-          搜索
-        </button>
-      </form>
-
-      <FilterBar
-        key={`${selectedCharacters.join('|')}-${lowerDifficulty}-${upperDifficulty}`}
+      <SearchControls
+        key={`${query}|${selectedCharacters.join(',')}|${lowerDifficulty}-${upperDifficulty}|${sortValue}`}
         characters={characters}
-        selected={selectedCharacters}
         query={query}
+        selected={selectedCharacters}
         min={lowerDifficulty}
         max={upperDifficulty}
+        sort={sortValue}
       />
 
-      <div className="mt-8 flex items-center justify-between gap-4">
+      <div className="mt-6 flex items-center justify-between gap-4">
         <p className="text-sm text-zinc-400">
           {query ? (
             <>
               「<span className="text-zinc-100">{query}</span>」找到{' '}
               <span className="font-semibold text-cyan-300">{total}</span> 首
-              {total > songs.length ? `，显示前 ${songs.length} 首` : ''}
+              {total > 0 ? `，正在展示第 ${rangeStart}-${rangeEnd} 首` : ''}
             </>
           ) : hasFilters ? (
             <>
               筛选出 <span className="font-semibold text-cyan-300">{total}</span> 首
-              {total > songs.length ? `，显示前 ${songs.length} 首` : ''}
+              {total > 0 ? `，正在展示第 ${rangeStart}-${rangeEnd} 首` : ''}
             </>
           ) : (
             <>
-              曲库共 <span className="font-semibold text-zinc-200">{total}</span> 首，先看看这些
+              曲库共 <span className="font-semibold text-zinc-200">{total}</span> 首
+              {total > 0 ? `，正在展示第 ${rangeStart}-${rangeEnd} 首` : ''}
             </>
           )}
         </p>
@@ -120,21 +131,24 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
         )}
       </div>
 
-      {total === 0 ? (
+      {libraryCount === 0 ? (
         <div className="mt-8 rounded-xl border border-amber-500/30 bg-amber-500/5 p-6 text-sm text-amber-200">
           数据库为空。请先在仓库根目录运行：
           <code className="mx-1 rounded bg-black/30 px-1.5 py-0.5">npm run db:import -- --all</code>
         </div>
-      ) : songs.length === 0 ? (
+      ) : total === 0 ? (
         <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-400">
           没有找到匹配曲目。可以换一个歌名、拼音首字母、外号，或调整筛选条件。
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-          {songs.map((song) => (
-            <SongCard key={song.id} song={song} query={query} />
-          ))}
-        </div>
+        <>
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+            {pageSongs.map((song) => (
+              <SongCard key={song.id} song={song} query={query} />
+            ))}
+          </div>
+          <Pagination page={currentPage} totalPages={totalPages} />
+        </>
       )}
     </section>
   );
@@ -143,7 +157,7 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
 function SearchSkeleton() {
   return (
     <div className="mt-8 animate-pulse">
-      <div className="h-12 rounded-xl bg-zinc-900" />
+      <div className="h-[34px] w-full max-w-md rounded-full bg-zinc-900" />
       <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
         {Array.from({ length: 4 }).map((_, index) => (
           <div key={index} className="h-40 rounded-xl border border-zinc-800 bg-zinc-900/40" />

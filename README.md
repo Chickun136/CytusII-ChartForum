@@ -62,14 +62,20 @@ npm run db:search -- AIAIAI
 
 ```text
 GET /                      首页搜索（?q= 歌名 / 外号 / 拼音）
-GET /songs/<songId>        曲目详情（难度切换、翻页、缩放、全屏）
+GET /songs/<songId>        曲目详情（难度切换、翻页、全屏）
 GET /api/search?q=         搜索 JSON 接口
 ```
 
 - 搜索覆盖曲名、艺术家、角色、拼音全拼、拼音首字母与外号，例如 `AIAIAI`、`bwfm`、`绊爱`、`Kizuna`。
-- 支持角色胶囊按钮与 1–16 难度区间筛选，筛选条件写入 URL（`chars` / `min` / `max`）；`13+` 按 13.5 参与区间判断。
+- 角色胶囊与 1–16 难度区间可先调整，点击「搜索」后统一下发；条件写入 URL（`q` / `chars` / `min` / `max` / `sort`），分页用 `page`。
+- 难度筛选按最高难度排序时只考虑每首歌的最高等级，`13+` / `15＋` 按 13.5 / 15.5 计算；默认按 `songs.json` 顺序。
+- 列表分页：手机 10 张/页，桌面 40 张/页（两列），支持上一页、下一页与跳页。
 - 外号维护在 `data/metadata/aliases.json`，导入时同步到 `Alias` 表。
 - 详情页默认选中 CHAOS，支持全屏、键盘左右键翻页，可导出整谱 PNG。
+
+## 封面资源
+
+曲绘放入 `public/covers/<songId>.webp`，再把 `Song.coverUrl` 填成 `/covers/<songId>.webp` 即可显示；未填写时卡片显示占位块。上线后可改为对象存储或 CDN 的绝对 URL。
 
 ## 谱面渲染 API 与缓存（Sprint 3）
 

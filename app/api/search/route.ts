@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   return Response.json({
     query,
     count: total,
-    songs: songs.map((song) => ({
+    songs: songs.slice(0, 30).map((song) => ({
       id: song.id,
       title: song.title,
       artist: song.artist,

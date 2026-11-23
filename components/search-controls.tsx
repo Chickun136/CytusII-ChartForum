@@ -2,44 +2,57 @@
 
 import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
-import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
+import type {
+  FormEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react';
+import type { SongSort } from '@/lib/songs';
 
 const MIN_DIFFICULTY = 1;
 const MAX_DIFFICULTY = 16;
 
-type FilterBarProps = {
+type SearchControlsProps = {
   characters: string[];
-  selected: string[];
   query: string;
+  selected: string[];
   min: number;
   max: number;
+  sort: SongSort;
 };
 
-export function FilterBar({ characters, selected, query, min, max }: FilterBarProps) {
+export function SearchControls({
+  characters,
+  query,
+  selected,
+  min,
+  max,
+  sort,
+}: SearchControlsProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [keyword, setKeyword] = useState(query);
+  const [picked, setPicked] = useState<string[]>(selected);
   const [range, setRange] = useState<[number, number]>([min, max]);
-  const rangeRef = useRef<[number, number]>([min, max]);
+  const [sortValue, setSortValue] = useState<SongSort>(sort);
   const dragging = useRef<'min' | 'max' | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
-  const navigate = (nextCharacters: string[], nextRange: [number, number]) => {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     const params = new URLSearchParams();
-    if (query) params.set('q', query);
-    if (nextCharacters.length > 0) params.set('chars', nextCharacters.join(','));
-    if (nextRange[0] > MIN_DIFFICULTY || nextRange[1] < MAX_DIFFICULTY) {
-      params.set('min', String(nextRange[0]));
-      params.set('max', String(nextRange[1]));
+    const trimmed = keyword.trim();
+    if (trimmed) params.set('q', trimmed);
+    if (picked.length > 0) params.set('chars', picked.join(','));
+    if (range[0] > MIN_DIFFICULTY || range[1] < MAX_DIFFICULTY) {
+      params.set('min', String(range[0]));
+      params.set('max', String(range[1]));
     }
+    if (sortValue !== 'default') params.set('sort', sortValue);
     const search = params.toString();
     startTransition(() => {
-      router.replace(search ? `/?${search}` : '/', { scroll: false });
+      router.push(search ? `/?${search}` : '/', { scroll: false });
     });
-  };
-
-  const setValues = (next: [number, number]) => {
-    rangeRef.current = next;
-    setRange(next);
   };
 
   const valueAt = (clientX: number) => {
@@ -51,16 +64,14 @@ export function FilterBar({ characters, selected, query, min, max }: FilterBarPr
   };
 
   const applyValue = (handle: 'min' | 'max', value: number) => {
-    const [low, high] = rangeRef.current;
-    setValues(
+    setRange(([low, high]) =>
       handle === 'min' ? [Math.min(value, high), high] : [low, Math.max(value, low)],
     );
   };
 
   const beginDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     const value = valueAt(event.clientX);
-    const [low, high] = rangeRef.current;
-    const handle = Math.abs(value - low) <= Math.abs(value - high) ? 'min' : 'max';
+    const handle = Math.abs(value - range[0]) <= Math.abs(value - range[1]) ? 'min' : 'max';
     dragging.current = handle;
     event.currentTarget.setPointerCapture(event.pointerId);
     applyValue(handle, value);
@@ -72,38 +83,52 @@ export function FilterBar({ characters, selected, query, min, max }: FilterBarPr
   };
 
   const endDrag = () => {
-    if (!dragging.current) return;
     dragging.current = null;
-    navigate(selected, rangeRef.current);
   };
 
   const nudge = (handle: 'min' | 'max', delta: number) => {
-    const [low, high] = rangeRef.current;
-    const next: [number, number] =
+    setRange(([low, high]) =>
       handle === 'min'
         ? [Math.min(high, Math.max(MIN_DIFFICULTY, low + delta)), high]
-        : [low, Math.min(MAX_DIFFICULTY, Math.max(low, high + delta))];
-    if (next[0] === low && next[1] === high) return;
-    setValues(next);
-    navigate(selected, next);
+        : [low, Math.min(MAX_DIFFICULTY, Math.max(low, high + delta))],
+    );
   };
 
   const toggleCharacter = (character: string) => {
-    const next = selected.includes(character)
-      ? selected.filter((item) => item !== character)
-      : [...selected, character];
-    navigate(next, rangeRef.current);
+    setPicked((current) =>
+      current.includes(character)
+        ? current.filter((item) => item !== character)
+        : [...current, character],
+    );
   };
 
   const percent = (value: number) =>
     ((value - MIN_DIFFICULTY) / (MAX_DIFFICULTY - MIN_DIFFICULTY)) * 100;
 
   return (
-    <div className={`mt-4 space-y-3 transition ${pending ? 'opacity-70' : ''}`}>
+    <form
+      onSubmit={submit}
+      className={`mt-4 space-y-3 transition ${pending ? 'opacity-70' : ''}`}
+    >
+      <div>
+        <label htmlFor="search-input" className="sr-only">
+          搜索曲目
+        </label>
+        <input
+          id="search-input"
+          type="search"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+          placeholder="输入歌名、拼音、首字母或外号…"
+          autoComplete="off"
+          className="h-[34px] w-full max-w-md rounded-full border border-zinc-800 bg-zinc-900 px-4 text-[13px] text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+        />
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-1 text-xs text-zinc-500">角色</span>
         {characters.map((character) => {
-          const active = selected.includes(character);
+          const active = picked.includes(character);
           return (
             <button
               key={character}
@@ -175,6 +200,28 @@ export function FilterBar({ characters, selected, query, min, max }: FilterBarPr
           </span>
         </div>
       </div>
-    </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          className="h-[34px] rounded-full bg-cyan-500 px-6 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-400"
+        >
+          搜索
+        </button>
+        <label htmlFor="sort-select" className="ml-1 text-xs text-zinc-500">
+          排序
+        </label>
+        <select
+          id="sort-select"
+          value={sortValue}
+          onChange={(event) => setSortValue(event.target.value as SongSort)}
+          className="h-[34px] rounded-full border border-zinc-800 bg-zinc-900 px-3 text-[13px] text-zinc-300 outline-none transition focus:border-cyan-500"
+        >
+          <option value="default">默认顺序</option>
+          <option value="difficulty-desc">最高难度 ↓</option>
+          <option value="difficulty-asc">最高难度 ↑</option>
+        </select>
+      </div>
+    </form>
   );
 }

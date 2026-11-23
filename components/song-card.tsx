@@ -49,21 +49,31 @@ export function SongCard({ song, query }: { song: SongWithCharts; query: string 
       </div>
 
       <div className="w-1/2 shrink-0">
-        <div className="flex h-full min-h-[120px] flex-col items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-gradient-to-br from-zinc-800/60 to-zinc-900">
-          <svg
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            className="h-6 w-6 text-zinc-700"
-          >
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <circle cx="8.5" cy="9.5" r="1.5" />
-            <path d="M21 15l-5-5L5 20" />
-          </svg>
-          <span className="text-[11px] text-zinc-600">封面占位</span>
-        </div>
+        {song.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={song.coverUrl}
+            alt={`${song.title} 封面`}
+            loading="lazy"
+            className="aspect-square w-full rounded-lg border border-zinc-800 object-cover"
+          />
+        ) : (
+          <div className="flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-gradient-to-br from-zinc-800/60 to-zinc-900">
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="h-6 w-6 text-zinc-700"
+            >
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <circle cx="8.5" cy="9.5" r="1.5" />
+              <path d="M21 15l-5-5L5 20" />
+            </svg>
+            <span className="text-[11px] text-zinc-600">封面占位</span>
+          </div>
+        )}
       </div>
     </Link>
   );

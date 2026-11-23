@@ -10,10 +10,13 @@ const include = {
   aliases: { orderBy: { alias: 'asc' as const } },
 };
 
+export type SongSort = 'default' | 'difficulty-desc' | 'difficulty-asc';
+
 export type SongSearchFilters = {
   characters?: string[];
   minDifficulty?: number;
   maxDifficulty?: number;
+  sort?: SongSort;
 };
 
 /** 难度文本转数值：13 -> 13，11+ -> 11.5（兼容全角＋），其余返回 null */
@@ -28,6 +31,17 @@ export type SongSearchResult = {
   songs: SongWithCharts[];
   total: number;
 };
+
+function highestDifficulty(song: SongWithCharts): number | null {
+  let highest: number | null = null;
+  for (const chart of song.charts) {
+    const score = difficultyScore(chart.difficultyLevel);
+    if (score !== null && (highest === null || score > highest)) {
+      highest = score;
+    }
+  }
+  return highest;
+}
 
 export async function searchSongs(
   query: string,
@@ -56,27 +70,37 @@ export async function searchSongs(
   const min = filters.minDifficulty ?? 1;
   const max = filters.maxDifficulty ?? 16;
   const narrowed = min > 1 || max < 16;
-  const limit = keyword ? 30 : 24;
 
   const songs = await prisma.song.findMany({
     where,
     include,
-    orderBy: { title: 'asc' },
-    ...(narrowed ? {} : { take: limit }),
+    orderBy: [{ orderIndex: 'asc' }, { id: 'asc' }],
   });
 
-  if (!narrowed) {
-    const total = await prisma.song.count({ where });
-    return { songs, total };
+  let matched = narrowed
+    ? songs.filter((song) =>
+        song.charts.some((chart) => {
+          const score = difficultyScore(chart.difficultyLevel);
+          return score !== null && score >= min && score <= max;
+        }),
+      )
+    : songs;
+
+  const sort = filters.sort ?? 'default';
+  if (sort !== 'default') {
+    const direction = sort === 'difficulty-desc' ? -1 : 1;
+    matched = [...matched].sort((a, b) => {
+      const left = highestDifficulty(a);
+      const right = highestDifficulty(b);
+      if (left === null && right === null) return a.orderIndex - b.orderIndex;
+      if (left === null) return 1;
+      if (right === null) return -1;
+      if (left !== right) return (left - right) * direction;
+      return a.orderIndex - b.orderIndex;
+    });
   }
 
-  const filtered = songs.filter((song) =>
-    song.charts.some((chart) => {
-      const score = difficultyScore(chart.difficultyLevel);
-      return score !== null && score >= min && score <= max;
-    }),
-  );
-  return { songs: filtered.slice(0, limit), total: filtered.length };
+  return { songs: matched, total: matched.length };
 }
 
 export async function getCharacters(): Promise<string[]> {

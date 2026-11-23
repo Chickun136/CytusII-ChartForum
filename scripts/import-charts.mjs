@@ -30,7 +30,9 @@ if (!fs.existsSync(dataDir)) {
 
 const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
 const aliases = fs.existsSync(aliasesPath) ? JSON.parse(fs.readFileSync(aliasesPath, 'utf8')) : {};
-const candidates = (metadata.songs || []).filter((s) => s.charts && Object.keys(s.charts).length > 0);
+const candidates = (metadata.songs || [])
+  .map((song, index) => ({ song, orderIndex: index }))
+  .filter(({ song }) => song.charts && Object.keys(song.charts).length > 0);
 const selected = candidates.slice(0, limit);
 
 function pinyinFields(title) {
@@ -64,7 +66,7 @@ try {
     console.log('已清空 songs / charts / aliases');
   }
 
-  for (const song of selected) {
+  for (const { song, orderIndex } of selected) {
     const songData = {
       title: song.title || song.id,
       artist: song.artist || 'Unknown',
@@ -72,6 +74,7 @@ try {
       category: song.category || null,
       bpm: Number.isFinite(song.bpm) ? song.bpm : null,
       metadataSource: 'ct2view + CytusII Wiki',
+      orderIndex,
       ...pinyinFields(song.title || song.id),
     };
 
