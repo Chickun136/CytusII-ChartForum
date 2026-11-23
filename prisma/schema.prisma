@@ -16,6 +16,8 @@ model Song {
   bpm            Int?
   coverUrl       String?
   metadataSource String?
+  pinyinFull     String?
+  pinyinInitials String?
   createdAt      DateTime @default(now())
 
   charts  Chart[]
@@ -23,6 +25,8 @@ model Song {
 
   @@index([title])
   @@index([artist])
+  @@index([pinyinFull])
+  @@index([pinyinInitials])
 }
 
 model Chart {
@@ -52,6 +56,7 @@ model Alias {
 
   song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
 
+  @@unique([songId, alias])
   @@index([alias])
   @@index([songId])
 }
