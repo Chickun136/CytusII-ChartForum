@@ -1,6 +1,6 @@
 # Cytus II Chart Forum
 
-Cytus II 谱面查询与交流站。当前为 Sprint 0：Next.js 骨架已初始化，可运行空白站点。
+Cytus II 谱面查询与交流站。当前完成 Sprint 4：支持歌名/外号/拼音搜索，曲目详情页可切换难度并缩放、翻页查看谱面。
 
 ## 技术栈
 
@@ -54,9 +54,21 @@ npm run db:import      # 默认导入前 30 首曲目
 npm run db:search -- AIAIAI
 ```
 
-- 导入全部曲目：`node scripts/import-charts.mjs --all`
+- 导入全部曲目：`node scripts/import-charts.mjs --all`（695 首 / 2223 张谱面）
 - 清空后重新导入：`npm run db:import -- --reset`
 - 表结构与字段含义见 [docs/data-dictionary.md](docs/data-dictionary.md)
+
+## 查询页（Sprint 4）
+
+```text
+GET /                      首页搜索（?q= 歌名 / 外号 / 拼音）
+GET /songs/<songId>        曲目详情（难度切换、翻页、缩放、全屏）
+GET /api/search?q=         搜索 JSON 接口
+```
+
+- 搜索覆盖曲名、艺术家、角色、拼音全拼、拼音首字母与外号，例如 `AIAIAI`、`bwfm`、`绊爱`、`Kizuna`。
+- 外号维护在 `data/metadata/aliases.json`，导入时同步到 `Alias` 表。
+- 详情页默认选中 CHAOS，支持全屏、键盘左右键翻页，可导出整谱 PNG。
 
 ## 谱面渲染 API 与缓存（Sprint 3）
 

@@ -1,4 +1,4 @@
-# 数据字典（Sprint 1）
+# 数据字典（Sprint 4）
 
 本文档记录谱面 JSON、曲目元数据与数据库字段的含义。数据管线对应 `scripts/import-charts.mjs`。
 
@@ -8,10 +8,11 @@
 | --- | --- | --- |
 | 谱面 JSON | 工作区 `Cytus II谱面数据/Cytus II 全谱面 5.3/` | 2223 个文件，约 234 MB，不进入公开仓库 |
 | 曲目元数据 | `data/metadata/songs.json` | 695 首，由 ct2view 页头 + Cytus II Wiki 生成 |
+| 曲目外号 | `data/metadata/aliases.json` | 人工维护的曲目 ID → 外号数组 |
 | 本地数据库 | `prisma/dev.db`（SQLite） | 由 Prisma 生成，已在 `.gitignore` 中忽略 |
 | 表结构 | `prisma/schema.prisma` | 迁移文件在 `prisma/migrations/` |
 
-Sprint 1 默认导入前 30 首曲目及其全部难度（102 张谱面）。
+Sprint 1 默认导入前 30 首曲目及其全部难度（102 张谱面）；Sprint 4 已全量导入 695 首、2223 张谱面。
 
 ## 2. 文件名规则
 
@@ -128,7 +129,13 @@ SCANLINE = BPM × 960 / len
 | `bpm` | Int? | 基准 BPM |
 | `coverUrl` | String? | 封面，暂未填充 |
 | `metadataSource` | String? | 元数据来源 |
+| `pinyinFull` | String? | 曲名全拼（小写、去符号），如 `aiaiai` |
+| `pinyinInitials` | String? | 曲名拼音首字母，如 `bwfm`（Bullet Waiting for Me） |
 | `createdAt` | DateTime | 入库时间 |
+
+`pinyinFull` / `pinyinInitials` 在导入时由 `pinyin-pro` 生成，均有索引，用于拼音搜索。
+
+拼音首字母规则：按空白分词；纯 ASCII 词取首字母，中文段取拼音首字母，最终只保留 `[a-z0-9]`。
 
 ### 5.2 `Chart`
 
@@ -157,6 +164,22 @@ SCANLINE = BPM × 960 / len
 | `source` | String? | 来源 |
 | `createdAt` | DateTime | 入库时间 |
 
+唯一约束：`(songId, alias)`，同一首歌不会重复插入相同外号。
+
+### 5.4 外号文件 `aliases.json`
+
+`data/metadata/aliases.json` 由人工维护，导入脚本读取后写入 `Alias` 表：
+
+```json
+{
+  "_meta": "曲目外号表：键为曲目 ID，值为外号数组，可按需扩充",
+  "ai001_001": ["绊爱", "AI酱"]
+}
+```
+
+- 以 `_` 开头的键会被忽略（用于存放说明）。
+- 新增外号后重新执行导入命令即可同步（`upsert`，不会重复）。
+
 ## 6. 数据管线命令
 
 ```powershell
@@ -164,10 +187,27 @@ npm run db:push                 # 同步 schema（开发时）
 npm run db:import               # 默认导入前 30 首
 node scripts/import-charts.mjs --all           # 导入全部 695 首
 node scripts/import-charts.mjs --limit 50 --reset
-npm run db:search -- AIAIAI     # 按歌名/艺术家/外号查询
+npm run db:search -- AIAIAI     # 按歌名/艺术家/外号/拼音查询
 ```
 
-## 7. 已知限制
+## 7. 搜索字段与规则
+
+`lib/songs.ts` 的 `searchSongs(query)` 会在以下字段做包含匹配：
+
+| 字段 | 示例 |
+| --- | --- |
+| `title` | `AIAIAI` |
+| `artist` | `Kizuna AI` |
+| `character` | `PAFF` |
+| `pinyinFull` | `aiai` |
+| `pinyinInitials` | `bwfm` |
+| `aliases.alias` | `绊爱` |
+
+- 空查询返回前 24 首（按曲目 ID 排序）。
+- 查询词会先做小写与去符号归一化，再参与匹配。
+- 结果最多返回 30 条，页面高亮首次命中位置。
+
+## 8. 已知限制
 
 - Wiki 难度匹配 680/695，剩余 15 首等级为 `null`。
 - `category`、`coverUrl` 暂未填充。

@@ -9,16 +9,22 @@ if (!keyword) {
 }
 
 try {
+  const normalized = keyword.toLowerCase();
   const songs = await prisma.song.findMany({
     where: {
       OR: [
         { title: { contains: keyword } },
         { artist: { contains: keyword } },
         { character: { contains: keyword } },
+        { pinyinFull: { contains: normalized } },
+        { pinyinInitials: { contains: normalized } },
         { aliases: { some: { alias: { contains: keyword } } } },
       ],
     },
-    include: { charts: { orderBy: { difficultyIndex: 'asc' } } },
+    include: {
+      charts: { orderBy: { difficultyIndex: 'asc' } },
+      aliases: true,
+    },
     orderBy: { title: 'asc' },
     take: 20,
   });
@@ -27,6 +33,7 @@ try {
   for (const song of songs) {
     console.log(`\n${song.title} — ${song.artist}`);
     if (song.character) console.log(`  角色：${song.character}`);
+    if (song.aliases.length > 0) console.log(`  别名：${song.aliases.map((a) => a.alias).join('、')}`);
     for (const chart of song.charts) {
       const level = chart.difficultyLevel ? ` ${chart.difficultyLevel}` : '';
       console.log(`  ${chart.difficultyName}${level}：${chart.pageCount} 页 / ${chart.noteCount} 音符（${chart.jsonFile}）`);
