@@ -1,11 +1,10 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { FilterBar } from '@/components/filter-bar';
 import { SongCard } from '@/components/song-card';
-import { getSongCount, searchSongs } from '@/lib/songs';
+import { getCharacters, searchSongs } from '@/lib/songs';
 
-type SearchParams = Promise<{ q?: string }>;
-
-const EXAMPLES = ['AIAIAI', 'bwfm', '绊爱', 'Kizuna'];
+type SearchParams = Promise<{ q?: string; chars?: string; min?: string; max?: string }>;
 
 export default function Home({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -37,9 +36,31 @@ export default function Home({ searchParams }: { searchParams: SearchParams }) {
 }
 
 async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
-  const { q } = await searchParams;
+  const { q, chars, min, max } = await searchParams;
   const query = (q ?? '').trim();
-  const [songs, total] = await Promise.all([searchSongs(query), getSongCount()]);
+
+  const characters = await getCharacters();
+  const selectedCharacters = (chars ?? '')
+    .split(',')
+    .filter((character) => characters.includes(character));
+
+  const parseLevel = (value: string | undefined, fallback: number) => {
+    const parsed = Number(value);
+    if (!value || !Number.isFinite(parsed)) return fallback;
+    return Math.min(16, Math.max(1, Math.round(parsed)));
+  };
+  const minDifficulty = parseLevel(min, 1);
+  const maxDifficulty = parseLevel(max, 16);
+  const lowerDifficulty = Math.min(minDifficulty, maxDifficulty);
+  const upperDifficulty = Math.max(minDifficulty, maxDifficulty);
+  const hasFilters =
+    selectedCharacters.length > 0 || lowerDifficulty > 1 || upperDifficulty < 16;
+
+  const { songs, total } = await searchSongs(query, {
+    characters: selectedCharacters,
+    minDifficulty: lowerDifficulty,
+    maxDifficulty: upperDifficulty,
+  });
 
   return (
     <section className="mt-8">
@@ -64,25 +85,27 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
         </button>
       </form>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-        <span>试试：</span>
-        {EXAMPLES.map((example) => (
-          <Link
-            key={example}
-            href={`/?q=${encodeURIComponent(example)}`}
-            className="rounded-full border border-zinc-800 px-2.5 py-1 text-zinc-400 transition hover:border-cyan-500/60 hover:text-cyan-200"
-          >
-            {example}
-          </Link>
-        ))}
-      </div>
+      <FilterBar
+        key={`${selectedCharacters.join('|')}-${lowerDifficulty}-${upperDifficulty}`}
+        characters={characters}
+        selected={selectedCharacters}
+        query={query}
+        min={lowerDifficulty}
+        max={upperDifficulty}
+      />
 
       <div className="mt-8 flex items-center justify-between gap-4">
         <p className="text-sm text-zinc-400">
           {query ? (
             <>
               「<span className="text-zinc-100">{query}</span>」找到{' '}
-              <span className="font-semibold text-cyan-300">{songs.length}</span> 首
+              <span className="font-semibold text-cyan-300">{total}</span> 首
+              {total > songs.length ? `，显示前 ${songs.length} 首` : ''}
+            </>
+          ) : hasFilters ? (
+            <>
+              筛选出 <span className="font-semibold text-cyan-300">{total}</span> 首
+              {total > songs.length ? `，显示前 ${songs.length} 首` : ''}
             </>
           ) : (
             <>
@@ -104,7 +127,7 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
         </div>
       ) : songs.length === 0 ? (
         <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-400">
-          没有找到匹配曲目。可以换一个歌名、拼音首字母或外号试试。
+          没有找到匹配曲目。可以换一个歌名、拼音首字母、外号，或调整筛选条件。
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">

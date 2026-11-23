@@ -67,6 +67,7 @@ GET /api/search?q=         搜索 JSON 接口
 ```
 
 - 搜索覆盖曲名、艺术家、角色、拼音全拼、拼音首字母与外号，例如 `AIAIAI`、`bwfm`、`绊爱`、`Kizuna`。
+- 支持角色胶囊按钮与 1–16 难度区间筛选，筛选条件写入 URL（`chars` / `min` / `max`）；`13+` 按 13.5 参与区间判断。
 - 外号维护在 `data/metadata/aliases.json`，导入时同步到 `Alias` 表。
 - 详情页默认选中 CHAOS，支持全屏、键盘左右键翻页，可导出整谱 PNG。
 
