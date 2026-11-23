@@ -42,7 +42,7 @@ export function Pagination({ page, totalPages }: PaginationProps) {
   if (totalPages <= 1) return null;
 
   const buttonClass =
-    'h-8 rounded-md border border-zinc-700 px-3 text-xs text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40';
+    'h-10 rounded-md border border-zinc-700 px-3 text-sm text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40 sm:h-8 sm:text-xs';
 
   return (
     <div
@@ -80,7 +80,7 @@ export function Pagination({ page, totalPages }: PaginationProps) {
           max={totalPages}
           value={jump}
           onChange={(event) => setJump(event.target.value)}
-          className="h-8 w-16 rounded-md border border-zinc-700 bg-zinc-900 px-2 text-center text-xs text-zinc-200 outline-none transition focus:border-cyan-500"
+          className="h-10 w-16 rounded-md border border-zinc-700 bg-zinc-900 px-2 text-center text-sm text-zinc-200 outline-none transition focus:border-cyan-500 sm:h-8 sm:text-xs"
         />
         <button type="submit" className={buttonClass}>
           跳转
