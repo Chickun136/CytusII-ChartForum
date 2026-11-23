@@ -9,7 +9,9 @@
     "lint": "eslint",
     "db:push": "prisma db push",
     "db:import": "node scripts/import-charts.mjs",
-    "db:search": "node scripts/search-songs.mjs"
+    "db:search": "node scripts/search-songs.mjs",
+    "render:coverage": "node scripts/render-coverage.mjs",
+    "render:bench": "node scripts/bench-cache.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
