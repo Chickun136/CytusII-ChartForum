@@ -14,10 +14,10 @@ export type ChartSummary = {
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const PAGE_STEPS = [-10, -1, 1, 10];
-const PAGE_COLUMNS = 4;
+const PAGE_ROWS = 4;
 const CELL_WIDTH = 512;
 const CELL_HEIGHT = 420;
-const MAX_CANVAS_HEIGHT = 32000;
+const MAX_CANVAS_WIDTH = 60000;
 const MAX_CANVAS_AREA = 100_000_000;
 const DOWNLOAD_BATCH = 8;
 
@@ -102,15 +102,16 @@ export function ChartViewer({
     setDownloadError('');
     setDownloadProgress({ done: 0, total: chart.pageCount });
 
-    const maxRows = Math.floor(MAX_CANVAS_HEIGHT / CELL_HEIGHT);
-    const columns = Math.max(PAGE_COLUMNS, Math.ceil(chart.pageCount / maxRows));
-    const rows = Math.ceil(chart.pageCount / columns);
+    const maxRows = Math.min(PAGE_ROWS, chart.pageCount);
+    const columns = Math.ceil(chart.pageCount / maxRows);
     const rawWidth = columns * CELL_WIDTH;
-    const rawHeight = rows * CELL_HEIGHT;
-    const scale =
+    const rawHeight = maxRows * CELL_HEIGHT;
+    const widthScale = rawWidth > MAX_CANVAS_WIDTH ? MAX_CANVAS_WIDTH / rawWidth : 1;
+    const areaScale =
       rawWidth * rawHeight > MAX_CANVAS_AREA
         ? Math.sqrt(MAX_CANVAS_AREA / (rawWidth * rawHeight))
         : 1;
+    const scale = Math.min(widthScale, areaScale);
 
     const canvas = document.createElement('canvas');
     canvas.width = Math.floor(rawWidth * scale);
@@ -139,12 +140,12 @@ export function ChartViewer({
           image.onerror = () => reject(new Error(`第 ${pageIndex + 1} 页解码失败`));
           image.src = svgUrl;
         });
-        const column = pageIndex % columns;
-        const row = Math.floor(pageIndex / columns);
+        const column = Math.floor(pageIndex / maxRows);
+        const row = pageIndex % maxRows;
         const x = Math.round((column * canvas.width) / columns);
         const nextX = Math.round(((column + 1) * canvas.width) / columns);
-        const y = Math.round((row * canvas.height) / rows);
-        const nextY = Math.round(((row + 1) * canvas.height) / rows);
+        const y = Math.round((row * canvas.height) / maxRows);
+        const nextY = Math.round(((row + 1) * canvas.height) / maxRows);
         context.drawImage(image, x, y, nextX - x, nextY - y);
       } finally {
         URL.revokeObjectURL(svgUrl);
