@@ -20,6 +20,51 @@ const EXPORT_SCALE = 2;
 const MAX_CANVAS_SIDE = 60000;
 const MAX_CANVAS_AREA = 120_000_000;
 const DOWNLOAD_BATCH = 8;
+const COMING_SOON_DIFFICULTIES = new Set(['DREAM', 'DROP']);
+
+function isComingSoonDifficulty(name: string) {
+  return COMING_SOON_DIFFICULTIES.has(name);
+}
+
+function ComingSoonChart() {
+  return (
+    <svg
+      viewBox="0 0 512 420"
+      role="img"
+      aria-label="谱面渲染开发中"
+      className="block h-auto w-full"
+    >
+      <rect width="512" height="420" fill="#050608" />
+      {[51, 124.5, 198, 271.5, 345].map((y) => (
+        <line
+          key={y}
+          x1="0"
+          x2="512"
+          y1={y}
+          y2={y}
+          stroke="#FFFFFF"
+          strokeOpacity="0.14"
+          strokeDasharray="6 8"
+          strokeWidth="1"
+        />
+      ))}
+      <line x1="42" x2="42" y1="51" y2="345" stroke="#FFFFFF" strokeOpacity="0.08" />
+      <line x1="469" x2="469" y1="51" y2="345" stroke="#FFFFFF" strokeOpacity="0.08" />
+      <text
+        x="256"
+        y="212"
+        textAnchor="middle"
+        fill="#27BF8D"
+        fontFamily="'Rajdhani', 'Segoe UI', sans-serif"
+        fontSize="34"
+        fontWeight="700"
+        letterSpacing="1"
+      >
+        coming s∞n
+      </text>
+    </svg>
+  );
+}
 
 function sanitizeFileName(value: string) {
   const cleaned = value.replace(/[\\/:*?"<>|]/g, '_').trim();
@@ -56,6 +101,7 @@ export function ChartViewer({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!chart) return;
+      if (isComingSoonDifficulty(chart.difficultyName)) return;
       if (event.target instanceof HTMLInputElement) return;
       if (event.key === 'ArrowLeft') setPage((current) => Math.max(0, current - 1));
       if (event.key === 'ArrowRight') {
@@ -73,6 +119,8 @@ export function ChartViewer({
       </div>
     );
   }
+
+  const comingSoon = isComingSoonDifficulty(chart.difficultyName);
 
   const selectChart = (index: number) => {
     setSelected(index);
@@ -210,7 +258,9 @@ export function ChartViewer({
             }`}
           >
             <DifficultyBadge name={item.difficultyName} level={item.difficultyLevel} />
-            <span className="text-xs text-zinc-400">{item.pageCount} 页</span>
+            <span className="text-xs text-zinc-400">
+              {isComingSoonDifficulty(item.difficultyName) ? 'coming s∞n' : `${item.pageCount} 页`}
+            </span>
           </button>
         ))}
       </div>
@@ -220,27 +270,31 @@ export function ChartViewer({
           <span className="text-zinc-200">{chart.difficultyName}</span>
           {chart.difficultyLevel ? ` ${chart.difficultyLevel}` : ''}
           <span className="mx-2 text-zinc-700">|</span>
-          {chart.pageCount} 页 · {chart.noteCount} 音符
+          {comingSoon ? 'coming s∞n' : `${chart.pageCount} 页 · ${chart.noteCount} 音符`}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href={imageUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-cyan-500/60 hover:text-cyan-200"
-          >
-            打开 SVG
-          </a>
-          <button
-            type="button"
-            onClick={downloadPng}
-            disabled={downloading}
-            className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60"
-          >
-            {downloading
-              ? `生成中 ${downloadProgress.done}/${downloadProgress.total}`
-              : '下载整谱 PNG'}
-          </button>
+          {!comingSoon && (
+            <>
+              <a
+                href={imageUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-cyan-500/60 hover:text-cyan-200"
+              >
+                打开 SVG
+              </a>
+              <button
+                type="button"
+                onClick={downloadPng}
+                disabled={downloading}
+                className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60"
+              >
+                {downloading
+                  ? `生成中 ${downloadProgress.done}/${downloadProgress.total}`
+                  : '下载整谱 PNG'}
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={toggleFullscreen}
@@ -257,49 +311,57 @@ export function ChartViewer({
         ref={viewerRef}
         className="mt-4 overflow-auto rounded-xl border border-zinc-800 bg-[#050608]"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageUrl}
-          alt={`${chart.difficultyName} 第 ${page + 1} 页`}
-          className="block h-auto w-full max-w-none"
-        />
+        {comingSoon ? (
+          <ComingSoonChart />
+        ) : (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageUrl}
+              alt={`${chart.difficultyName} 第 ${page + 1} 页`}
+              className="block h-auto w-full max-w-none"
+            />
+          </>
+        )}
       </div>
 
-      <div className="mt-4 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-1.5">
-          {PAGE_STEPS.map((step) => {
-            const target = page + step;
-            const disabled = target < 0 || target > chart.pageCount - 1;
-            return (
-              <button
-                key={step}
-                type="button"
-                onClick={() => jumpPage(step)}
-                disabled={disabled}
-                aria-label={step < 0 ? `后退 ${Math.abs(step)} 页` : `前进 ${step} 页`}
-                className="rounded-md border border-zinc-700 px-2.5 py-1.5 font-mono text-sm tabular-nums text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {step > 0 ? `+${step}` : step}
-              </button>
-            );
-          })}
-          <span className="ml-2 text-xs text-zinc-400">
-            {page + 1} / {chart.pageCount}
-          </span>
-        </div>
+      {!comingSoon && (
+        <div className="mt-4 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-1.5">
+            {PAGE_STEPS.map((step) => {
+              const target = page + step;
+              const disabled = target < 0 || target > chart.pageCount - 1;
+              return (
+                <button
+                  key={step}
+                  type="button"
+                  onClick={() => jumpPage(step)}
+                  disabled={disabled}
+                  aria-label={step < 0 ? `后退 ${Math.abs(step)} 页` : `前进 ${step} 页`}
+                  className="rounded-md border border-zinc-700 px-2.5 py-1.5 font-mono text-sm tabular-nums text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {step > 0 ? `+${step}` : step}
+                </button>
+              );
+            })}
+            <span className="ml-2 text-xs text-zinc-400">
+              {page + 1} / {chart.pageCount}
+            </span>
+          </div>
 
-        <div className="flex flex-1 items-center gap-3 sm:justify-center">
-          <input
-            type="range"
-            min={0}
-            max={chart.pageCount - 1}
-            value={page}
-            onChange={(event) => setPage(Number(event.target.value))}
-            aria-label="选择页码"
-            className="h-1.5 w-full max-w-xs cursor-pointer accent-cyan-400"
-          />
+          <div className="flex flex-1 items-center gap-3 sm:justify-center">
+            <input
+              type="range"
+              min={0}
+              max={chart.pageCount - 1}
+              value={page}
+              onChange={(event) => setPage(Number(event.target.value))}
+              aria-label="选择页码"
+              className="h-1.5 w-full max-w-xs cursor-pointer accent-cyan-400"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <ChartRating chartId={chart.id} />
     </section>
