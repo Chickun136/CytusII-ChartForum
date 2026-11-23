@@ -67,7 +67,7 @@ async function SongContent({ params }: { params: SongParams }) {
           </div>
         </header>
 
-        <ChartViewer charts={charts} />
+        <ChartViewer charts={charts} title={song.title} artist={song.artist} />
 
         <CommentSection />
 

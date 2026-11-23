@@ -14,8 +14,27 @@ export type ChartSummary = {
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const PAGE_STEPS = [-10, -1, 1, 10];
+const PAGE_COLUMNS = 4;
+const CELL_WIDTH = 512;
+const CELL_HEIGHT = 420;
+const MAX_CANVAS_HEIGHT = 32000;
+const MAX_CANVAS_AREA = 100_000_000;
+const DOWNLOAD_BATCH = 8;
 
-export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
+function sanitizeFileName(value: string) {
+  const cleaned = value.replace(/[\\/:*?"<>|]/g, '_').trim();
+  return cleaned || '未命名';
+}
+
+export function ChartViewer({
+  charts,
+  title,
+  artist,
+}: {
+  charts: ChartSummary[];
+  title: string;
+  artist: string;
+}) {
   const [selected, setSelected] = useState(() => {
     const chaos = charts.findIndex((chart) => chart.difficultyName === 'CHAOS');
     return chaos >= 0 ? chaos : 0;
@@ -24,6 +43,8 @@ export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({ done: 0, total: 0 });
+  const [downloadError, setDownloadError] = useState('');
   const viewerRef = useRef<HTMLDivElement>(null);
   const chart = charts[selected] ?? charts[0];
 
@@ -78,53 +99,89 @@ export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
   const downloadPng = async () => {
     if (downloading) return;
     setDownloading(true);
-    const currentPage = page;
-    let svgUrl = '';
+    setDownloadError('');
+    setDownloadProgress({ done: 0, total: chart.pageCount });
+
+    const maxRows = Math.floor(MAX_CANVAS_HEIGHT / CELL_HEIGHT);
+    const columns = Math.max(PAGE_COLUMNS, Math.ceil(chart.pageCount / maxRows));
+    const rows = Math.ceil(chart.pageCount / columns);
+    const rawWidth = columns * CELL_WIDTH;
+    const rawHeight = rows * CELL_HEIGHT;
+    const scale =
+      rawWidth * rawHeight > MAX_CANVAS_AREA
+        ? Math.sqrt(MAX_CANVAS_AREA / (rawWidth * rawHeight))
+        : 1;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.floor(rawWidth * scale);
+    canvas.height = Math.floor(rawHeight * scale);
+    const context = canvas.getContext('2d');
+    if (!context) {
+      setDownloadError('浏览器不支持画布渲染，无法导出图片。');
+      setDownloading(false);
+      return;
+    }
+    context.fillStyle = '#000000';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    const drawPage = async (pageIndex: number) => {
+      const response = await fetch(`/api/charts/${chart.id}/${pageIndex}`);
+      if (!response.ok) throw new Error(`第 ${pageIndex + 1} 页加载失败`);
+      const svg = await response.text();
+      const svgUrl = URL.createObjectURL(
+        new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }),
+      );
+      try {
+        const image = new Image();
+        image.decoding = 'async';
+        await new Promise<void>((resolve, reject) => {
+          image.onload = () => resolve();
+          image.onerror = () => reject(new Error(`第 ${pageIndex + 1} 页解码失败`));
+          image.src = svgUrl;
+        });
+        const column = pageIndex % columns;
+        const row = Math.floor(pageIndex / columns);
+        const x = Math.round((column * canvas.width) / columns);
+        const nextX = Math.round(((column + 1) * canvas.width) / columns);
+        const y = Math.round((row * canvas.height) / rows);
+        const nextY = Math.round(((row + 1) * canvas.height) / rows);
+        context.drawImage(image, x, y, nextX - x, nextY - y);
+      } finally {
+        URL.revokeObjectURL(svgUrl);
+      }
+      setDownloadProgress((current) => ({ ...current, done: current.done + 1 }));
+    };
+
     try {
-      const response = await fetch(imageUrl);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const svgText = await response.text();
-      svgUrl = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' }));
-
-      const image = new Image();
-      image.decoding = 'async';
-      await new Promise<void>((resolve, reject) => {
-        image.onload = () => resolve();
-        image.onerror = () => reject(new Error('SVG 解码失败'));
-        image.src = svgUrl;
-      });
-
-      const scale = 2;
-      const width = image.naturalWidth || 512;
-      const height = image.naturalHeight || 420;
-      const canvas = document.createElement('canvas');
-      canvas.width = width * scale;
-      canvas.height = height * scale;
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('无法创建画布');
-      context.fillStyle = '#050608';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      for (let start = 0; start < chart.pageCount; start += DOWNLOAD_BATCH) {
+        const batch: Promise<void>[] = [];
+        const end = Math.min(start + DOWNLOAD_BATCH, chart.pageCount);
+        for (let index = start; index < end; index += 1) {
+          batch.push(drawPage(index));
+        }
+        await Promise.all(batch);
+      }
 
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, 'image/png'),
       );
       if (!blob) throw new Error('PNG 生成失败');
 
+      const difficulty = `${chart.difficultyName}${
+        chart.difficultyLevel ? ` ${chart.difficultyLevel}` : ''
+      }`;
+      const fileName = [title, artist, difficulty].map(sanitizeFileName).join('-');
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.download = `${chart.id}-${currentPage + 1}.png`;
+      link.download = `${fileName}.png`;
       link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      setTimeout(() => URL.revokeObjectURL(link.href), 2000);
     } catch (error) {
       console.error(error);
-      const link = document.createElement('a');
-      link.href = imageUrl;
-      link.download = `${chart.id}-${currentPage + 1}.svg`;
-      link.click();
+      setDownloadError('整谱下载失败，请重试。');
     } finally {
-      if (svgUrl) URL.revokeObjectURL(svgUrl);
       setDownloading(false);
+      setDownloadProgress({ done: 0, total: 0 });
     }
   };
 
@@ -171,7 +228,9 @@ export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
             disabled={downloading}
             className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60"
           >
-            {downloading ? '生成中…' : '下载 PNG'}
+            {downloading
+              ? `生成中 ${downloadProgress.done}/${downloadProgress.total}`
+              : '下载整谱 PNG'}
           </button>
           <button
             type="button"
@@ -182,6 +241,8 @@ export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
           </button>
         </div>
       </div>
+
+      {downloadError && <p className="mt-2 text-xs text-rose-300">{downloadError}</p>}
 
       <div
         ref={viewerRef}
