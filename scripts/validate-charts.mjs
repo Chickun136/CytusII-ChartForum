@@ -36,7 +36,6 @@ for (const input of files) {
   const name = path.basename(file, '.json');
   const chart = JSON.parse(fs.readFileSync(file, 'utf8'));
   const errors = [];
-  const warning = [];
   const typeCount = {};
   let unknownTypes = [];
   let crossPageHolds = 0;
