@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { ChartViewer, type ChartSummary } from '@/components/chart-viewer';
+import { CommentSection } from '@/components/comment-section';
 import { getSong } from '@/lib/songs';
 
 type SongParams = Promise<{ id: string }>;
@@ -67,6 +68,8 @@ async function SongContent({ params }: { params: SongParams }) {
         </header>
 
         <ChartViewer charts={charts} />
+
+        <CommentSection />
 
         <footer className="mt-16 border-t border-zinc-800 pt-6 text-xs text-zinc-600">
           Cytus II 曲目与谱面版权归雷亚（Rayark）所有，本站仅用于课程学习与演示。

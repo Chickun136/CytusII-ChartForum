@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { DifficultyBadge } from './difficulty-badge';
 
 export type ChartSummary = {
@@ -13,6 +13,7 @@ export type ChartSummary = {
 };
 
 const ZOOM_LEVELS = [1, 1.5, 2];
+const PAGE_STEPS = [-10, -1, 1, 10];
 
 export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
   const [selected, setSelected] = useState(() => {
@@ -22,6 +23,7 @@ export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
   const [page, setPage] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const viewerRef = useRef<HTMLDivElement>(null);
   const chart = charts[selected] ?? charts[0];
 
@@ -69,6 +71,63 @@ export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
 
   const imageUrl = `/api/charts/${chart.id}/${page}`;
 
+  const jumpPage = (step: number) => {
+    setPage((current) => Math.min(chart.pageCount - 1, Math.max(0, current + step)));
+  };
+
+  const downloadPng = async () => {
+    if (downloading) return;
+    setDownloading(true);
+    const currentPage = page;
+    let svgUrl = '';
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const svgText = await response.text();
+      svgUrl = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' }));
+
+      const image = new Image();
+      image.decoding = 'async';
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('SVG 解码失败'));
+        image.src = svgUrl;
+      });
+
+      const scale = 2;
+      const width = image.naturalWidth || 512;
+      const height = image.naturalHeight || 420;
+      const canvas = document.createElement('canvas');
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('无法创建画布');
+      context.fillStyle = '#050608';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/png'),
+      );
+      if (!blob) throw new Error('PNG 生成失败');
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${chart.id}-${currentPage + 1}.png`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    } catch (error) {
+      console.error(error);
+      const link = document.createElement('a');
+      link.href = imageUrl;
+      link.download = `${chart.id}-${currentPage + 1}.svg`;
+      link.click();
+    } finally {
+      if (svgUrl) URL.revokeObjectURL(svgUrl);
+      setDownloading(false);
+    }
+  };
+
   return (
     <section className="mt-8">
       <div className="flex flex-wrap gap-2">
@@ -106,13 +165,14 @@ export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
           >
             打开 SVG
           </a>
-          <a
-            href={imageUrl}
-            download={`${chart.id}-${page}.svg`}
-            className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-cyan-500/60 hover:text-cyan-200"
+          <button
+            type="button"
+            onClick={downloadPng}
+            disabled={downloading}
+            className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-wait disabled:opacity-60"
           >
-            下载
-          </a>
+            {downloading ? '生成中…' : '下载 PNG'}
+          </button>
           <button
             type="button"
             onClick={toggleFullscreen}
@@ -137,23 +197,23 @@ export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
       </div>
 
       <div className="mt-4 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setPage((current) => Math.max(0, current - 1))}
-            disabled={page === 0}
-            className="rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            上一页
-          </button>
-          <button
-            type="button"
-            onClick={() => setPage((current) => Math.min(chart.pageCount - 1, current + 1))}
-            disabled={page >= chart.pageCount - 1}
-            className="rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            下一页
-          </button>
+        <div className="flex items-center gap-1.5">
+          {PAGE_STEPS.map((step) => {
+            const target = page + step;
+            const disabled = target < 0 || target > chart.pageCount - 1;
+            return (
+              <button
+                key={step}
+                type="button"
+                onClick={() => jumpPage(step)}
+                disabled={disabled}
+                aria-label={step < 0 ? `后退 ${Math.abs(step)} 页` : `前进 ${step} 页`}
+                className="rounded-md border border-zinc-700 px-2.5 py-1.5 font-mono text-sm tabular-nums text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {step > 0 ? `+${step}` : step}
+              </button>
+            );
+          })}
           <span className="ml-2 text-xs text-zinc-400">
             {page + 1} / {chart.pageCount}
           </span>
@@ -189,6 +249,83 @@ export function ChartViewer({ charts }: { charts: ChartSummary[] }) {
           ))}
         </div>
       </div>
+
+      <ChartRating chartId={chart.id} />
     </section>
+  );
+}
+
+const RATING_STORAGE_PREFIX = 'cytus-chart-rating:';
+const ratingListeners = new Set<() => void>();
+
+function subscribeRating(onChange: () => void) {
+  ratingListeners.add(onChange);
+  window.addEventListener('storage', onChange);
+  return () => {
+    ratingListeners.delete(onChange);
+    window.removeEventListener('storage', onChange);
+  };
+}
+
+function setRatingValue(chartId: string, value: number) {
+  const key = `${RATING_STORAGE_PREFIX}${chartId}`;
+  if (value > 0) {
+    window.localStorage.setItem(key, String(value));
+  } else {
+    window.localStorage.removeItem(key);
+  }
+  ratingListeners.forEach((listener) => listener());
+}
+
+function ChartRating({ chartId }: { chartId: string }) {
+  const rating = useSyncExternalStore(
+    subscribeRating,
+    () => Number(window.localStorage.getItem(`${RATING_STORAGE_PREFIX}${chartId}`)) || 0,
+    () => 0,
+  );
+  const [hover, setHover] = useState(0);
+
+  const choose = (value: number) => {
+    setRatingValue(chartId, value === rating ? 0 : value);
+  };
+
+  const active = hover || rating;
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+      <div>
+        <p className="text-sm text-zinc-200">谱面评分</p>
+        <p className="mt-1 text-xs text-zinc-500">
+          点击星星打分（0–5 星），再点同一颗可取消；评分暂存于本机。
+        </p>
+      </div>
+      <div className="flex items-center gap-1" onMouseLeave={() => setHover(0)}>
+        {[1, 2, 3, 4, 5].map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => choose(value)}
+            onMouseEnter={() => setHover(value)}
+            onFocus={() => setHover(value)}
+            onBlur={() => setHover(0)}
+            aria-label={`${value} 星`}
+            aria-pressed={rating === value}
+            className="rounded p-0.5 transition hover:scale-110"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              fill="currentColor"
+              className={`h-6 w-6 ${value <= active ? 'text-amber-400' : 'text-zinc-600'}`}
+            >
+              <path d="M12 2.4l2.98 6.36 6.96.92-5.1 4.82 1.3 6.9L12 18.1l-6.14 3.3 1.3-6.9-5.1-4.82 6.96-.92z" />
+            </svg>
+          </button>
+        ))}
+        <span className="ml-2 w-14 text-xs text-zinc-400">
+          {rating > 0 ? `${rating} / 5` : '未评分'}
+        </span>
+      </div>
+    </div>
   );
 }

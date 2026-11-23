@@ -19,9 +19,8 @@ export default function Home({ searchParams }: { searchParams: SearchParams }) {
             找到你的下一张谱面
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
-            支持歌名、艺术家、角色、拼音全拼、拼音首字母与外号搜索。例如输入
-            <span className="mx-1 text-zinc-200">bwfm</span>
-            可找到 Bullet Waiting for Me。
+            支持歌名、艺术家、角色、拼音全拼、拼音首字母与外号搜索。例：
+            <span className="mx-1 text-zinc-200">bwfm-&gt;Bullet Waiting for Me</span>
           </p>
         </header>
 
