@@ -4,6 +4,7 @@ node_modules/
 *.log
 .env
 .env.*
+!.env.example
 /out/
 /build/
 /coverage
@@ -12,3 +13,5 @@ node_modules/
 next-env.d.ts
 .DS_Store
 *.pem
+prisma/*.db
+prisma/*.db-journal

@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Song {
+  id             String   @id
+  title          String
+  artist         String
+  character      String?
+  category       String?
+  bpm            Int?
+  coverUrl       String?
+  metadataSource String?
+  createdAt      DateTime @default(now())
+
+  charts  Chart[]
+  aliases Alias[]
+
+  @@index([title])
+  @@index([artist])
+}
+
+model Chart {
+  id              String   @id
+  songId          String
+  difficultyIndex Int
+  difficultyName  String
+  difficultyLevel String?
+  jsonFile        String
+  pageCount       Int
+  noteCount       Int
+  viewCount       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@unique([songId, difficultyIndex])
+  @@index([songId])
+}
+
+model Alias {
+  id        Int      @id @default(autoincrement())
+  songId    String
+  alias     String
+  source    String?
+  createdAt DateTime @default(now())
+
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade)
+
+  @@index([alias])
+  @@index([songId])
+}
