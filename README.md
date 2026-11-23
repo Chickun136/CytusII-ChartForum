@@ -58,6 +58,27 @@ npm run db:search -- AIAIAI
 - 清空后重新导入：`npm run db:import -- --reset`
 - 表结构与字段含义见 [docs/data-dictionary.md](docs/data-dictionary.md)
 
+## 谱面渲染 API 与缓存（Sprint 3）
+
+```text
+GET /api/charts/<chartId>/<page>
+```
+
+- `chartId` 为去掉 `.json` 的文件名，如 `ai001_001_2`
+- 返回 `image/svg+xml`，带 ETag，支持 304
+- 首次渲染写入 `.cache/charts/`，命中缓存时响应头 `X-Chart-Cache: HIT`
+
+相关命令：
+
+```powershell
+npm run render:coverage              # 全量谱面抽样渲染校验
+node scripts/render-coverage.mjs --all-pages
+npm run render:bench -- ai001_001_2 0
+```
+
+环境变量：`CHART_DATA_DIR`（谱面目录）、`CHART_CACHE_DIR`（缓存目录）。
+核对结果见 [docs/render-coverage.md](docs/render-coverage.md)。
+
 ## 目录
 
 ```text

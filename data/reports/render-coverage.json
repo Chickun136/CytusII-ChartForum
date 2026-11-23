@@ -1,0 +1,90 @@
+{
+  "generatedAt": "2026-11-23T08:30:36.893Z",
+  "dataDir": "../Cytus II谱面数据/Cytus II 全谱面 5.3",
+  "mode": "sample",
+  "rendererVersion": "v1",
+  "charts": {
+    "total": 2223,
+    "rendered": 2223,
+    "failed": 0
+  },
+  "pages": {
+    "total": 372680,
+    "rendered": 6669
+  },
+  "notes": 1349433,
+  "types": {
+    "0": 726718,
+    "1": 99487,
+    "2": 21131,
+    "3": 96518,
+    "4": 272440,
+    "5": 44156,
+    "6": 21434,
+    "7": 54656,
+    "8": 9581,
+    "9": 3312
+  },
+  "unsupported": {
+    "charts": 36,
+    "notes": 12893,
+    "types": [
+      8,
+      9
+    ]
+  },
+  "geometry": {
+    "outOfRangeX": 0,
+    "invalidPageIndex": 0,
+    "invalidPageTicks": 0
+  },
+  "samples": [
+    {
+      "chart": "ai001_001_0.json",
+      "pages": 207,
+      "notes": 445,
+      "renderedPages": 3,
+      "svgBytes": 7774,
+      "renderMs": 1.1
+    },
+    {
+      "chart": "graffj001_004_1.json",
+      "pages": 201,
+      "notes": 600,
+      "renderedPages": 3,
+      "svgBytes": 7542,
+      "renderMs": 0.2
+    },
+    {
+      "chart": "ivy001_005_2.json",
+      "pages": 194,
+      "notes": 979,
+      "renderedPages": 3,
+      "svgBytes": 11253,
+      "renderMs": 0.34
+    },
+    {
+      "chart": "neko001_042_0.json",
+      "pages": 113,
+      "notes": 425,
+      "renderedPages": 3,
+      "svgBytes": 10003,
+      "renderMs": 0.14
+    },
+    {
+      "chart": "paff003_003_1.json",
+      "pages": 126,
+      "notes": 315,
+      "renderedPages": 3,
+      "svgBytes": 8919,
+      "renderMs": 0.25
+    }
+  ],
+  "failures": [],
+  "timing": {
+    "totalMs": 3663,
+    "avgPageMs": 0.55,
+    "maxSvgBytes": 12394,
+    "avgSvgBytes": 2900
+  }
+}

@@ -1,6 +1,7 @@
 node_modules/
 .next/
 .preview/
+.cache/
 *.log
 .env
 .env.*
