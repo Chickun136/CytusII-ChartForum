@@ -10,33 +10,109 @@ const include = {
   aliases: { orderBy: { alias: 'asc' as const } },
 };
 
-export async function searchSongs(query: string, take = 30): Promise<SongWithCharts[]> {
+export type SongSort = 'default' | 'difficulty-desc' | 'difficulty-asc';
+
+export type SongSearchFilters = {
+  characters?: string[];
+  minDifficulty?: number;
+  maxDifficulty?: number;
+  sort?: SongSort;
+};
+
+/** 难度文本转数值：13 -> 13，11+ -> 11.5（兼容全角＋），其余返回 null */
+function difficultyScore(level: string | null): number | null {
+  if (!level) return null;
+  const match = level.trim().match(/^(\d+)(\+|＋)?$/);
+  if (!match) return null;
+  return Number(match[1]) + (match[2] ? 0.5 : 0);
+}
+
+export type SongSearchResult = {
+  songs: SongWithCharts[];
+  total: number;
+};
+
+function highestDifficulty(song: SongWithCharts): number | null {
+  let highest: number | null = null;
+  for (const chart of song.charts) {
+    const score = difficultyScore(chart.difficultyLevel);
+    if (score !== null && (highest === null || score > highest)) {
+      highest = score;
+    }
+  }
+  return highest;
+}
+
+export async function searchSongs(
+  query: string,
+  filters: SongSearchFilters = {},
+): Promise<SongSearchResult> {
   const keyword = query.trim();
-  if (!keyword) {
-    return prisma.song.findMany({
-      include,
-      orderBy: { title: 'asc' },
-      take: 24,
+  const normalized = keyword.toLowerCase().replace(/\s+/g, '');
+  const where: Prisma.SongWhereInput = {};
+
+  if (keyword) {
+    where.OR = [
+      { title: { contains: keyword } },
+      { artist: { contains: keyword } },
+      { character: { contains: keyword } },
+      { pinyinFull: { contains: normalized } },
+      { pinyinInitials: { contains: normalized } },
+      { aliases: { some: { alias: { contains: keyword } } } },
+    ];
+  }
+
+  const characters = filters.characters ?? [];
+  if (characters.length > 0) {
+    where.character = { in: characters };
+  }
+
+  const min = filters.minDifficulty ?? 1;
+  const max = filters.maxDifficulty ?? 16;
+  const narrowed = min > 1 || max < 16;
+
+  const songs = await prisma.song.findMany({
+    where,
+    include,
+    orderBy: [{ orderIndex: 'asc' }, { id: 'asc' }],
+  });
+
+  let matched = narrowed
+    ? songs.filter((song) =>
+        song.charts.some((chart) => {
+          const score = difficultyScore(chart.difficultyLevel);
+          return score !== null && score >= min && score <= max;
+        }),
+      )
+    : songs;
+
+  const sort = filters.sort ?? 'default';
+  if (sort !== 'default') {
+    const direction = sort === 'difficulty-desc' ? -1 : 1;
+    matched = [...matched].sort((a, b) => {
+      const left = highestDifficulty(a);
+      const right = highestDifficulty(b);
+      if (left === null && right === null) return a.orderIndex - b.orderIndex;
+      if (left === null) return 1;
+      if (right === null) return -1;
+      if (left !== right) return (left - right) * direction;
+      return a.orderIndex - b.orderIndex;
     });
   }
 
-  const normalized = keyword.toLowerCase().replace(/\s+/g, '');
+  return { songs: matched, total: matched.length };
+}
 
-  return prisma.song.findMany({
-    where: {
-      OR: [
-        { title: { contains: keyword } },
-        { artist: { contains: keyword } },
-        { character: { contains: keyword } },
-        { pinyinFull: { contains: normalized } },
-        { pinyinInitials: { contains: normalized } },
-        { aliases: { some: { alias: { contains: keyword } } } },
-      ],
-    },
-    include,
-    orderBy: { title: 'asc' },
-    take,
+export async function getCharacters(): Promise<string[]> {
+  const rows = await prisma.song.findMany({
+    where: { character: { not: null } },
+    select: { character: true },
+    distinct: ['character'],
+    orderBy: { character: 'asc' },
   });
+  return rows
+    .map((row) => row.character)
+    .filter((value): value is string => Boolean(value && value.trim()));
 }
 
 export async function getSong(id: string): Promise<SongWithCharts | null> {

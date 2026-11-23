@@ -127,10 +127,11 @@ SCANLINE = BPM × 960 / len
 | `character` | String? | 角色 |
 | `category` | String? | 分类/曲包，暂未填充 |
 | `bpm` | Int? | 基准 BPM |
-| `coverUrl` | String? | 封面，暂未填充 |
+| `coverUrl` | String? | 封面地址，如 `/covers/ai001_001.webp`；为空时列表显示占位块 |
 | `metadataSource` | String? | 元数据来源 |
 | `pinyinFull` | String? | 曲名全拼（小写、去符号），如 `aiaiai` |
 | `pinyinInitials` | String? | 曲名拼音首字母，如 `bwfm`（Bullet Waiting for Me） |
+| `orderIndex` | Int | 在 `songs.json` 中的顺序，默认排序依据 |
 | `createdAt` | DateTime | 入库时间 |
 
 `pinyinFull` / `pinyinInitials` 在导入时由 `pinyin-pro` 生成，均有索引，用于拼音搜索。
@@ -203,9 +204,12 @@ npm run db:search -- AIAIAI     # 按歌名/艺术家/外号/拼音查询
 | `pinyinInitials` | `bwfm` |
 | `aliases.alias` | `绊爱` |
 
-- 空查询返回前 24 首（按曲目 ID 排序）。
+- 空查询返回前 24 首（按 `orderIndex` 排序）。
 - 查询词会先做小写与去符号归一化，再参与匹配。
-- 结果最多返回 30 条，页面高亮首次命中位置。
+- 首页可按角色与难度区间筛选：URL 参数 `chars`（逗号分隔）、`min` / `max`（1–16）。
+- 难度筛选按谱面等级判断，`13+` / `15＋` 按 13.5 / 15.5 计算；未填等级的谱面不参与区间匹配。
+- 排序参数 `sort`：缺省按 `orderIndex`；`difficulty-desc` / `difficulty-asc` 按每首歌的最高难度排序。
+- 分页参数 `page`：手机（UA 含 Mobile/Android/iPhone）每页 10 张，其余每页 40 张。
 
 ## 8. 已知限制
 
