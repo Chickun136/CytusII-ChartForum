@@ -5,8 +5,10 @@ import { AuthForms } from '@/components/auth-forms';
 import { MessageLink } from '@/components/message-link';
 import { MessageSection } from '@/components/message-section';
 import { ProfileSettings } from '@/components/profile-settings';
+import { ReportSection } from '@/components/report-section';
 import { SiteHeader, SiteHeaderSkeleton } from '@/components/site-header';
 import { getCurrentUser } from '@/lib/auth';
+import { getMyReports } from '@/lib/moderation';
 import { getNotifications } from '@/lib/notifications';
 import { canAccessAdmin, roleLabel, roleStyle } from '@/lib/roles';
 
@@ -35,6 +37,7 @@ export default function AccountPage({ searchParams }: { searchParams: AccountSea
 async function AccountContent({ searchParams }: { searchParams: AccountSearchParams }) {
   const { view } = await searchParams;
   const messagesView = view === 'messages';
+  const reportsView = view === 'reports';
   const user = await getCurrentUser();
 
   if (!user) {
@@ -55,13 +58,14 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
     day: '2-digit',
   }).format(user.createdAt);
   const { items, unreadCount } = await getNotifications(user.id);
+  const myReports = reportsView ? await getMyReports(user.id) : [];
   const roleBadge = roleStyle(user.role);
 
   const roleNote =
     user.role === 'MASTER'
-      ? '内部账号：可分配管理员，并管理后续活动。'
+      ? '内部账号：可分配管理员、处理全部举报，并管理活动。'
       : user.role === 'ADMIN'
-        ? '管理员：可进入管理后台，活动编辑与发布待活动模块上线。'
+        ? '管理员：可处理 Player 的举报、管理活动与查看玩家列表。'
         : '玩家：可查看谱面、参与活动并获取 Capso。';
 
   return (
@@ -99,6 +103,17 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
 
         <div className="flex flex-wrap items-center gap-2">
           <MessageLink active={messagesView} unreadCount={unreadCount} />
+          <Link
+            href={reportsView ? '/account' : '/account?view=reports'}
+            aria-current={reportsView ? 'page' : undefined}
+            className={`flex h-9 items-center rounded-lg border px-3 text-xs transition ${
+              reportsView
+                ? 'border-cyan-500/40 bg-cyan-500/15 font-medium text-cyan-200'
+                : 'border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'
+            }`}
+          >
+            我的举报
+          </Link>
           {canAccessAdmin(user.role) && (
             <Link
               href="/admin"
@@ -123,7 +138,9 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
         </div>
       </div>
 
-      {messagesView ? (
+      {reportsView ? (
+        <ReportSection items={myReports} />
+      ) : messagesView ? (
         <MessageSection initialItems={items} />
       ) : (
         <ProfileSettings nickname={user.nickname} />

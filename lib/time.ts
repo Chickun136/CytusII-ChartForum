@@ -14,3 +14,26 @@ export function formatRelativeTime(iso: string) {
     day: '2-digit',
   }).format(date);
 }
+
+const dateTimeFormatter = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'Asia/Shanghai',
+});
+
+export function formatDateTime(value: string | Date) {
+  return dateTimeFormatter.format(new Date(value)).replace(/\//g, '-');
+}
+
+export function toDateTimeLocalValue(value: string | Date) {
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+}
+

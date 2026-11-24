@@ -4,6 +4,7 @@ export type CommentAuthor = {
   id: string;
   nickname: string;
   avatarUrl: string | null;
+  role: string;
 };
 
 export type CommentView = {
@@ -13,26 +14,34 @@ export type CommentView = {
   author: CommentAuthor;
   likeCount: number;
   likedByMe: boolean;
+  deleted: boolean;
+  deletedBySelf: boolean;
   replies: CommentView[];
 };
 
 type CommentRow = {
   id: string;
+  userId: string;
   content: string;
   createdAt: Date;
+  deletedAt: Date | null;
+  deletedById: string | null;
   user: CommentAuthor;
   likes: { userId: string }[];
   replies?: CommentRow[];
 };
 
 function toView(row: CommentRow, viewerId?: string): CommentView {
+  const deleted = Boolean(row.deletedAt);
   return {
     id: row.id,
-    content: row.content,
+    content: deleted ? '' : row.content,
     createdAt: row.createdAt.toISOString(),
     author: row.user,
     likeCount: row.likes.length,
     likedByMe: viewerId ? row.likes.some((like) => like.userId === viewerId) : false,
+    deleted,
+    deletedBySelf: deleted && row.deletedById === row.userId,
     replies: [],
   };
 }
@@ -42,12 +51,12 @@ export async function getSongComments(songId: string, viewerId?: string): Promis
     where: { songId, parentId: null },
     orderBy: { createdAt: 'desc' },
     include: {
-      user: { select: { id: true, nickname: true, avatarUrl: true } },
+      user: { select: { id: true, nickname: true, avatarUrl: true, role: true } },
       likes: { select: { userId: true } },
       replies: {
         orderBy: { createdAt: 'asc' },
         include: {
-          user: { select: { id: true, nickname: true, avatarUrl: true } },
+          user: { select: { id: true, nickname: true, avatarUrl: true, role: true } },
           likes: { select: { userId: true } },
         },
       },
@@ -56,6 +65,6 @@ export async function getSongComments(songId: string, viewerId?: string): Promis
 
   return rows.map((row) => ({
     ...toView(row, viewerId),
-    replies: (row.replies ?? []).map((reply) => toView(reply, viewerId)),
+    replies: row.deletedAt ? [] : (row.replies ?? []).map((reply) => toView(reply, viewerId)),
   }));
 }

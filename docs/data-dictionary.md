@@ -220,6 +220,9 @@ SCANLINE = BPM × 960 / len
 | `userId` | String | 评论作者，关联 `User`，级联删除 |
 | `parentId` | String? | 为空表示一级评论；回复统一挂到一级评论下 |
 | `content` | String | 纯文本，最多 500 字 |
+| `deletedAt` | DateTime? | 软删除时间；为空表示未删除 |
+| `deletedById` | String? | 删除操作者；与作者相同表示本人删除，否则为管理员删除 |
+| `deleteReason` | String? | `MANUAL` / `MODERATION` / `MUTE` 等删除来源 |
 | `createdAt` | DateTime | 发表时间 |
 
 `CommentLike`：
@@ -240,7 +243,7 @@ SCANLINE = BPM × 960 / len
 | `id` | String @id | cuid |
 | `recipientId` | String | 接收者，关联 `User`，级联删除 |
 | `actorId` | String | 触发者，关联 `User`，级联删除 |
-| `type` | String | `LIKE` 或 `REPLY` |
+| `type` | String | `LIKE` / `REPLY` / `REPORT_RESULT` / `MODERATION` |
 | `commentId` | String | 被赞/被回复的评论，关联 `Comment`，级联删除 |
 | `isRead` | Boolean | 默认 `false`，打开消息中心后标记已读 |
 | `createdAt` / `updatedAt` | DateTime | 最近一次互动时间 |
@@ -248,6 +251,43 @@ SCANLINE = BPM × 960 / len
 - `@@unique([recipientId, type, commentId])`：同一评论的同类互动只保留一条消息。
 - 消息列表中的「等 N 人」分别来自该评论的点赞数 / 回复数。
 - 取消点赞后若该评论已无点赞，对应 `LIKE` 消息会被删除。
+- `REPORT_RESULT` 发给举报人，`MODERATION` 发给被判定违规的评论作者；`actor` 均为处理人。
+
+### 5.7 `Report`（举报与禁言）
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | String @id | cuid |
+| `commentId` | String | 被举报评论，关联 `Comment`，级联删除 |
+| `reporterId` | String | 举报人，关联 `User`，级联删除 |
+| `content` | String | 必填的文字说明（最多 200 字） |
+| `status` | String | `PENDING` / `RESOLVED`（违规）/ `DISMISSED`（不违规） |
+| `handledById` | String? | 处理人；举报人删除后置空 |
+| `handledAt` | DateTime? | 处理时间 |
+| `resolution` | String? | 处理说明 |
+| `muteDays` | Int? | 禁言天数：1 / 3 / 7；未禁言为空 |
+| `muteUntil` | DateTime? | 禁言截止时间，到期自动失效 |
+| `createdAt` | DateTime | 举报时间 |
+
+- `@@unique([commentId, reporterId])`：同一人对同一评论只能举报一次。
+- 全站共享一个队列；同一评论的多条举报在管理页聚合展示，处理时一并更新。
+- 禁言不单独建表，直接挂在举报条目上，满足“禁言必须依托举报存在”。
+- 查询某用户是否被禁言：取其所有举报中最大的 `muteUntil`，大于当前时间即生效。
+
+### 5.8 `Event`（活动）
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | String @id | cuid |
+| `title` | String | 标题，最多 80 字 |
+| `description` | String | 说明，最多 2000 字 |
+| `startAt` / `endAt` | DateTime | 起止时间，结束必须晚于开始 |
+| `status` | String | `DRAFT` / `PUBLISHED` / `WITHDRAWN` |
+| `createdById` | String | 创建者，关联 `User`，级联删除 |
+| `createdAt` / `updatedAt` | DateTime | 创建与更新时间 |
+
+- `/events` 只展示 `PUBLISHED` 活动；草稿与已撤回活动仅管理后台可见。
+- 活动类型、报名、Capso 发放规则待后续版本补充。
 
 ## 6. 数据管线命令
 
