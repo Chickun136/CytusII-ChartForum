@@ -2,14 +2,17 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { logoutAction } from './actions';
 import { AuthForms } from '@/components/auth-forms';
-import { MessageCenter } from '@/components/message-center';
+import { MessageLink } from '@/components/message-link';
+import { MessageSection } from '@/components/message-section';
 import { ProfileSettings } from '@/components/profile-settings';
 import { SiteHeader, SiteHeaderSkeleton } from '@/components/site-header';
 import { getCurrentUser } from '@/lib/auth';
 import { getNotifications } from '@/lib/notifications';
 import { canAccessAdmin, roleLabel, roleStyle } from '@/lib/roles';
 
-export default function AccountPage() {
+type AccountSearchParams = Promise<{ view?: string }>;
+
+export default function AccountPage({ searchParams }: { searchParams: AccountSearchParams }) {
   return (
     <main className="min-h-screen bg-[#050608] text-zinc-100">
       <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8">
@@ -18,7 +21,7 @@ export default function AccountPage() {
         </Suspense>
 
         <Suspense fallback={<AccountSkeleton />}>
-          <AccountContent />
+          <AccountContent searchParams={searchParams} />
         </Suspense>
 
         <footer className="mt-16 border-t border-zinc-800 pt-6 text-xs text-zinc-600">
@@ -29,7 +32,9 @@ export default function AccountPage() {
   );
 }
 
-async function AccountContent() {
+async function AccountContent({ searchParams }: { searchParams: AccountSearchParams }) {
+  const { view } = await searchParams;
+  const messagesView = view === 'messages';
   const user = await getCurrentUser();
 
   if (!user) {
@@ -89,7 +94,7 @@ async function AccountContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <MessageCenter initialItems={items} unreadCount={unreadCount} />
+          <MessageLink active={messagesView} unreadCount={unreadCount} />
           {canAccessAdmin(user.role) && (
             <Link
               href="/admin"
@@ -107,14 +112,18 @@ async function AccountContent() {
             </button>
           </form>
         </div>
+
+        <div className="w-full border-t border-zinc-800 pt-3 text-xs leading-6 text-zinc-500">
+          <p>{roleNote}</p>
+          <p>Capso 默认为 0；活动系统上线后，完成活动会按活动规则增加。</p>
+        </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 text-xs leading-6 text-zinc-500">
-        <p>{roleNote}</p>
-        <p>Capso 默认为 0；活动系统上线后，完成活动会按活动规则增加。</p>
-      </div>
-
-      <ProfileSettings nickname={user.nickname} />
+      {messagesView ? (
+        <MessageSection initialItems={items} />
+      ) : (
+        <ProfileSettings nickname={user.nickname} />
+      )}
     </section>
   );
 }

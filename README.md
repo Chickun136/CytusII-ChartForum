@@ -91,7 +91,8 @@ GET /api/search?q=         搜索 JSON 接口
 
 - 曲目详情页支持登录后发表评论、回复（一级）与点赞；未登录时显示「去登录」。
 - 点赞会自动通知评论作者；回复会自动通知被回复评论的作者，自己的操作不产生通知。
-- 账号页右上角信封图标即消息入口：有未读时显示红点，打开后自动标记已读。
+- 账号页右上角信封图标即消息入口：有未读时显示红点，点击后高亮并在下方展开完整消息板块；打开后自动标记已读。
+- 消息板块与个人资料互斥：选中消息时隐藏昵称/头像设置，只显示消息列表；玩家信息与 Capso 提示固定在顶部卡片内。
 - 消息分为「赞」与「回复」两类；同一评论的多条点赞/回复只保留一行，显示为「某某 等 N 人」。
 - 数据表为 `Comment` / `CommentLike` / `Notification`，迁移见 `prisma/migrations/20261124120000_add_comments_and_notifications`。
 
@@ -149,7 +150,8 @@ CytusII-ChartForum/
 │  ├─ comment-section.tsx       评论列表、点赞、回复
 │  ├─ comment-form.tsx          评论 / 回复输入框
 │  ├─ reply-box.tsx             回复展开与收起
-│  ├─ message-center.tsx        账号消息中心、未读红点
+│  ├─ message-link.tsx          消息入口与未读红点
+│  ├─ message-section.tsx       账号页消息板块、赞 / 回复标签
 │  ├─ difficulty-badge.tsx      难度徽标
 │  ├─ auth-forms.tsx            登录 / 注册表单
 │  └─ profile-settings.tsx      昵称、头像、密码
