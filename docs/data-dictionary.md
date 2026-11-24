@@ -181,6 +181,34 @@ SCANLINE = BPM × 960 / len
 - 以 `_` 开头的键会被忽略（用于存放说明）。
 - 新增外号后重新执行导入命令即可同步（`upsert`，不会重复）。
 
+### 5.5 `User` / `Session`（账号系统）
+
+`User`：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | String @id | cuid |
+| `email` | String @unique | 注册时统一转小写 |
+| `passwordHash` | String | Node `scrypt`，格式 `salt:hash` |
+| `nickname` | String | 2–20 个字符，默认取邮箱前缀 |
+| `avatarUrl` | String? | `/api/avatars/<file>`；为空时显示首字母 |
+| `capso` | Int | 默认 0，活动上线后按规则增加 |
+| `role` | String | `MASTER` / `ADMIN` / `PLAYER` |
+| `createdAt` / `updatedAt` | DateTime | 注册与更新时间 |
+
+`Session`：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | String @id | 会话 token 的 SHA-256，不存明文 |
+| `userId` | String | 关联 `User`，级联删除 |
+| `expiresAt` | DateTime | 30 天有效期 |
+| `createdAt` | DateTime | 创建时间 |
+
+- 第一个注册的账号自动成为 `MASTER`；Master 可在 `/admin` 将其他账号设为 `ADMIN` 或 `PLAYER`
+- 会话 Cookie `cytus_session`：HttpOnly、SameSite=Lax，生产环境加 Secure
+- 头像文件保存在 `data/avatars/`（`AVATAR_DIR` 可覆盖），单文件 ≤ 1 MB，仅接受 PNG/JPG/WebP
+
 ## 6. 数据管线命令
 
 ```powershell
@@ -216,4 +244,5 @@ npm run db:search -- AIAIAI     # 按歌名/艺术家/外号/拼音查询
 - Wiki 难度匹配 680/695，剩余 15 首等级为 `null`。
 - `category`、`coverUrl` 暂未填充。
 - DREAM / DROP 的 `type 8/9` 尚未实现；对应难度显示 `coming s∞n` 占位，待映射逻辑确认后补齐。
+- 账号系统未接入邮箱验证码与登录限流；活动模块未开发，Capso 暂无增长途径。
 - 原始谱面 JSON 与 SQLite 数据库均不提交公开仓库。

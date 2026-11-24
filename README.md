@@ -1,6 +1,6 @@
 # Cytus II Chart Forum
 
-Cytus II 谱面查询与交流站。当前完成 Sprint 4：支持歌名/外号/拼音搜索，曲目详情页可切换难度并缩放、翻页查看谱面。
+Cytus II 谱面查询与交流站。支持歌名/外号/拼音搜索、角色与难度筛选、排序分页、谱面查看与整谱 PNG 导出，并提供账号系统（注册/登录、头像昵称、Master/Admin/Player）。
 
 ## 技术栈
 
@@ -78,6 +78,15 @@ GET /api/search?q=         搜索 JSON 接口
 
 曲绘放入 `public/covers/<songId>.webp`，再把 `Song.coverUrl` 填成 `/covers/<songId>.webp` 即可显示；未填写时卡片显示占位块。上线后可改为对象存储或 CDN 的绝对 URL。
 
+## 账号系统
+
+- 顶部菜单：谱面列表 / 个人账号 / 活动（开发中）；Master / Admin 额外显示「管理」
+- 注册需要邮箱、密码与确认密码；**第一个注册的账号自动成为 Master（内部账号）**，之后注册为 Player
+- 角色：Master（分配管理员、管理活动）、Admin（管理后台 / 活动）、Player（普通玩家）
+- 个人账号支持修改昵称、上传头像（PNG / JPG / WebP，≤1 MB）；Capso 默认 0，活动上线后按活动规则增加
+- 会话使用 HttpOnly Cookie（30 天），密码用 Node `scrypt` 哈希；头像存 `data/avatars`，可用 `AVATAR_DIR` 覆盖，部署时需持久化该目录
+- 暂未接入邮箱验证码与登录限流，仅做课程演示用途
+
 ## 谱面渲染 API 与缓存（Sprint 3）
 
 ```text
@@ -99,14 +108,99 @@ npm run render:bench -- ai001_001_2 0
 环境变量：`CHART_DATA_DIR`（谱面目录）、`CHART_CACHE_DIR`（缓存目录）。
 核对结果见 [docs/render-coverage.md](docs/render-coverage.md)。
 
-## 目录
+## 部署
+
+自建服务器（Ubuntu + Nginx + PM2 + SQLite/谱面目录挂载）的完整步骤见 [docs/deployment.md](docs/deployment.md)。当前尚未购买服务器与域名，线上地址待补。
+
+## 项目结构
 
 ```text
-app/            页面与布局
-docs/           需求、设计、测试、验收文档
-scripts/        数据抓取、谱面渲染与校验
-data/metadata/  曲目元数据索引
+CytusII-ChartForum/
+├─ app/                         路由与页面（Next.js App Router）
+│  ├─ layout.tsx                根布局、字体、全局样式
+│  ├─ page.tsx                  首页：搜索 + 角色/难度筛选 + 排序 + 分页
+│  ├─ globals.css               Tailwind 与主题样式
+│  ├─ songs/[id]/page.tsx       曲目详情：元数据 + 看谱
+│  ├─ account/
+│  │  ├─ page.tsx               登录 / 注册 / 个人资料
+│  │  └─ actions.ts             账号相关 Server Actions
+│  ├─ admin/page.tsx            账号管理（Master / Admin）
+│  ├─ events/page.tsx           活动占位页
+│  └─ api/
+│     ├─ search/route.ts        搜索 JSON API
+│     ├─ charts/[chartId]/[page]/route.ts   单页 SVG 输出
+│     └─ avatars/[file]/route.ts            头像文件读取
+│
+├─ components/                  UI 组件
+│  ├─ site-header.tsx           顶栏、登录状态
+│  ├─ site-nav.tsx              菜单与当前页高亮
+│  ├─ search-controls.tsx       搜索框、角色胶囊、难度滑杆、排序
+│  ├─ song-card.tsx             结果卡片（1:1 曲绘占位）
+│  ├─ pagination.tsx            上一页 / 下一页 / 跳页
+│  ├─ chart-viewer.tsx          看谱、翻页、整谱 PNG 导出、评分
+│  ├─ comment-section.tsx       评论区占位
+│  ├─ difficulty-badge.tsx      难度徽标
+│  ├─ auth-forms.tsx            登录 / 注册表单
+│  └─ profile-settings.tsx      昵称、头像、密码
+│
+├─ lib/                         业务逻辑
+│  ├─ prisma.ts                 PrismaClient 单例
+│  ├─ songs.ts                  搜索 / 筛选 / 排序 / 分页 / 详情查询
+│  ├─ difficulty.ts             难度配色、等级解析（+ 按 .5）
+│  ├─ chart-service.mjs         渲染器接入、SVG 缓存、ETag
+│  ├─ auth.ts / auth-types.ts   会话与当前用户
+│  ├─ roles.ts                  角色与权限判断
+│  └─ avatar.ts                 头像校验与保存
+│
+├─ scripts/                     离线数据与维护脚本
+│  ├─ fetch-metadata.mjs        抓取曲目元数据
+│  ├─ import-charts.mjs         谱面入库（拼音 / 别名 / 排序）
+│  ├─ validate-charts.mjs       谱面数据校验
+│  ├─ render-preview.mjs        单谱 SVG 渲染原型
+│  ├─ render-coverage.mjs       全量渲染覆盖报告
+│  ├─ bench-cache.mjs           缓存性能测试
+│  └─ search-songs.mjs          CLI 搜索验证
+│
+├─ prisma/
+│  ├─ schema.prisma             Song / Chart / Alias / User / Session
+│  ├─ migrations/               数据库迁移
+│  └─ dev.db                    SQLite 数据库（未提交）
+│
+├─ data/
+│  ├─ metadata/songs.json       695 首曲目元数据
+│  ├─ metadata/aliases.json     外号表（可手动编辑）
+│  ├─ reports/render-coverage.json  渲染覆盖报告
+│  └─ avatars/                  用户头像（运行时生成，未提交）
+│
+├─ docs/
+│  ├─ data-dictionary.md        数据字典
+│  └─ render-coverage.md        渲染覆盖说明
+│
+└─ 根配置
+   ├─ next.config.ts / tsconfig.json / eslint.config.mjs
+   ├─ package.json / package-lock.json
+   ├─ .env.example              DATABASE_URL、AVATAR_DIR 示例
+   └─ README.md
 ```
+
+运行时生成、不提交的目录：
+
+```text
+.next/          Next.js 构建产物
+.cache/charts/  谱面 SVG 缓存
+.preview/       渲染样张与元数据抓取缓存
+node_modules/   依赖
+```
+
+原始谱面 JSON 位于仓库外：`../Cytus II谱面数据/Cytus II 全谱面 5.3/`。
+
+主要调用链：
+
+- 首页：`app/page.tsx` → `lib/songs.ts` → Prisma
+- 详情：`app/songs/[id]/page.tsx` → `components/chart-viewer.tsx`
+- 谱面图：`chart-viewer` → `/api/charts/...` → `lib/chart-service.mjs` → 渲染器 + 缓存
+- 账号：`app/account/page.tsx` → `app/account/actions.ts` → `lib/auth.ts` → `User` / `Session`
+- 数据准备：`scripts/` → `data/metadata` + 原始 JSON → `prisma/dev.db`
 
 ## 版权
 

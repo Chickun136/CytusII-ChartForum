@@ -482,11 +482,10 @@ function renderPage(chart, pageIndex, meta = null) {
     );
   }
 
-  // 顶部信息：页码左对齐，SCANLINE 速度右对齐
+  // 顶部信息：页码左对齐，SCANLINE 标签与数值合并后整体右对齐（兼容小数）
   parts.push(
     `<text x="12" y="21" fill="#AAAAAA" font-family="${FONT}" font-size="18" font-weight="bold" text-anchor="start">${pageIndex}</text>`,
-    `<text x="452" y="21" fill="#FFFFFF" font-family="${FONT}" font-size="18" font-weight="bold" text-anchor="end">SCANLINE:</text>`,
-    `<text x="507" y="21" fill="#FFFFFF" font-family="${FONT}" font-size="18" font-weight="bold" text-anchor="end">${scanline}</text>`,
+    `<text x="507" y="21" fill="#FFFFFF" font-family="${FONT}" font-size="18" font-weight="bold" text-anchor="end">SCANLINE: ${scanline}</text>`,
   );
   parts.push(...bottomInfo(meta));
   parts.push('</svg>');
