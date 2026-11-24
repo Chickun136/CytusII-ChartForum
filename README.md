@@ -72,6 +72,7 @@ GET /api/search?q=         搜索 JSON 接口
 - 列表分页：手机 10 张/页，桌面 40 张/页（两列），支持上一页、下一页与跳页。
 - 外号维护在 `data/metadata/aliases.json`，导入时同步到 `Alias` 表。
 - 详情页默认选中 CHAOS，支持全屏、键盘左右键翻页，可导出整谱 PNG。
+- DREAM / DROP 暂未实现 type 8/9 映射，看谱区显示一屏空扫描线与 `coming s∞n` 占位，不提供翻页与下载。
 
 ## 封面资源
 

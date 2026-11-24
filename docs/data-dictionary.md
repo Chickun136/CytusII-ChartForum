@@ -94,7 +94,7 @@ SCANLINE = BPM × 960 / len
 | 5 | 闪烁（flick） | 菱形箭头 |
 | 6 | c-drag（点锁） | 锁链形状 + click 配色 |
 | 7 | c-drag（点锁） | 同上 |
-| 8 / 9 | DREAM / DROP 专属 | 尚未实现，校验脚本会报错 |
+| 8 / 9 | DREAM / DROP 专属 | 尚未实现；看谱区显示 `coming s∞n` 占位 |
 
 链头判定：`type 3`，或没有任何其他链节点的 `next_id` 指向它。
 
@@ -243,6 +243,6 @@ npm run db:search -- AIAIAI     # 按歌名/艺术家/外号/拼音查询
 
 - Wiki 难度匹配 680/695，剩余 15 首等级为 `null`。
 - `category`、`coverUrl` 暂未填充。
-- DREAM / DROP 的 `type 8/9` 尚未实现。
+- DREAM / DROP 的 `type 8/9` 尚未实现；对应难度显示 `coming s∞n` 占位，待映射逻辑确认后补齐。
 - 账号系统未接入邮箱验证码与登录限流；活动模块未开发，Capso 暂无增长途径。
 - 原始谱面 JSON 与 SQLite 数据库均不提交公开仓库。
