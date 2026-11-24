@@ -69,7 +69,7 @@ async function SongContent({ params }: { params: SongParams }) {
 
         <ChartViewer charts={charts} title={song.title} artist={song.artist} />
 
-        <CommentSection />
+        <CommentSection songId={song.id} />
 
         <footer className="mt-16 border-t border-zinc-800 pt-6 text-xs text-zinc-600">
           Cytus II 曲目与谱面版权归雷亚（Rayark）所有，本站仅用于课程学习与演示。

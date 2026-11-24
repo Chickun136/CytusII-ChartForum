@@ -21,8 +21,9 @@ model Song {
   orderIndex     Int      @default(0)
   createdAt      DateTime @default(now())
 
-  charts  Chart[]
-  aliases Alias[]
+  charts   Chart[]
+  aliases  Alias[]
+  comments Comment[]
 
   @@index([title])
   @@index([artist])
@@ -74,7 +75,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  sessions Session[]
+  sessions              Session[]
+  comments              Comment[]
+  commentLikes          CommentLike[]
+  notificationsReceived Notification[] @relation("NotificationRecipient")
+  notificationsSent     Notification[] @relation("NotificationActor")
 
   @@index([role])
 }
@@ -88,4 +93,56 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  songId    String
+  userId    String
+  parentId  String?
+  content   String
+  createdAt DateTime @default(now())
+
+  song          Song           @relation(fields: [songId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent        Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       Comment[]      @relation("CommentReplies")
+  likes         CommentLike[]
+  notifications Notification[]
+
+  @@index([songId, createdAt])
+  @@index([parentId])
+  @@index([userId])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  recipientId String
+  actorId     String
+  type        String
+  commentId   String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  recipient User    @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  comment   Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([recipientId, type, commentId])
+  @@index([recipientId, isRead])
+  @@index([recipientId, createdAt])
 }

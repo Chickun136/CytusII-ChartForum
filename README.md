@@ -87,6 +87,15 @@ GET /api/search?q=         搜索 JSON 接口
 - 会话使用 HttpOnly Cookie（30 天），密码用 Node `scrypt` 哈希；头像存 `data/avatars`，可用 `AVATAR_DIR` 覆盖，部署时需持久化该目录
 - 暂未接入邮箱验证码与登录限流，仅做课程演示用途
 
+## 评论区与消息中心
+
+- 曲目详情页支持登录后发表评论、回复（一级）与点赞；未登录时显示「去登录」。
+- 点赞会自动通知评论作者；回复会自动通知被回复评论的作者，自己的操作不产生通知。
+- 账号页右上角信封图标即消息入口：有未读时显示红点，点击后高亮并在下方展开完整消息板块；打开后自动标记已读。
+- 消息板块与个人资料互斥：选中消息时隐藏昵称/头像设置，只显示消息列表；玩家信息与 Capso 提示固定在顶部卡片内。
+- 消息分为「赞」与「回复」两类；同一评论的多条点赞/回复只保留一行，显示为「某某 等 N 人」。
+- 数据表为 `Comment` / `CommentLike` / `Notification`，迁移见 `prisma/migrations/20261124120000_add_comments_and_notifications`。
+
 ## 谱面渲染 API 与缓存（Sprint 3）
 
 ```text
@@ -138,7 +147,11 @@ CytusII-ChartForum/
 │  ├─ song-card.tsx             结果卡片（1:1 曲绘占位）
 │  ├─ pagination.tsx            上一页 / 下一页 / 跳页
 │  ├─ chart-viewer.tsx          看谱、翻页、整谱 PNG 导出、评分
-│  ├─ comment-section.tsx       评论区占位
+│  ├─ comment-section.tsx       评论列表、点赞、回复
+│  ├─ comment-form.tsx          评论 / 回复输入框
+│  ├─ reply-box.tsx             回复展开与收起
+│  ├─ message-link.tsx          消息入口与未读红点
+│  ├─ message-section.tsx       账号页消息板块、赞 / 回复标签
 │  ├─ difficulty-badge.tsx      难度徽标
 │  ├─ auth-forms.tsx            登录 / 注册表单
 │  └─ profile-settings.tsx      昵称、头像、密码
@@ -148,6 +161,9 @@ CytusII-ChartForum/
 │  ├─ songs.ts                  搜索 / 筛选 / 排序 / 分页 / 详情查询
 │  ├─ difficulty.ts             难度配色、等级解析（+ 按 .5）
 │  ├─ chart-service.mjs         渲染器接入、SVG 缓存、ETag
+│  ├─ comments.ts               评论与回复查询
+│  ├─ notifications.ts          点赞 / 回复消息查询
+│  ├─ time.ts                   相对时间格式化
 │  ├─ auth.ts / auth-types.ts   会话与当前用户
 │  ├─ roles.ts                  角色与权限判断
 │  └─ avatar.ts                 头像校验与保存

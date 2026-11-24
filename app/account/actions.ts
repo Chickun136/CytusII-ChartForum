@@ -149,3 +149,14 @@ export async function setRoleAction(formData: FormData) {
   await prisma.user.update({ where: { id: userId }, data: { role } });
   revalidatePath('/admin');
 }
+
+export async function markNotificationsReadAction() {
+  const user = await getCurrentUser();
+  if (!user) return;
+
+  await prisma.notification.updateMany({
+    where: { recipientId: user.id, isRead: false },
+    data: { isRead: true },
+  });
+  revalidatePath('/account');
+}

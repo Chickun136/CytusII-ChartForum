@@ -2,12 +2,17 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { logoutAction } from './actions';
 import { AuthForms } from '@/components/auth-forms';
+import { MessageLink } from '@/components/message-link';
+import { MessageSection } from '@/components/message-section';
 import { ProfileSettings } from '@/components/profile-settings';
 import { SiteHeader, SiteHeaderSkeleton } from '@/components/site-header';
 import { getCurrentUser } from '@/lib/auth';
+import { getNotifications } from '@/lib/notifications';
 import { canAccessAdmin, roleLabel, roleStyle } from '@/lib/roles';
 
-export default function AccountPage() {
+type AccountSearchParams = Promise<{ view?: string }>;
+
+export default function AccountPage({ searchParams }: { searchParams: AccountSearchParams }) {
   return (
     <main className="min-h-screen bg-[#050608] text-zinc-100">
       <div className="mx-auto max-w-4xl px-5 py-8 sm:px-8">
@@ -16,7 +21,7 @@ export default function AccountPage() {
         </Suspense>
 
         <Suspense fallback={<AccountSkeleton />}>
-          <AccountContent />
+          <AccountContent searchParams={searchParams} />
         </Suspense>
 
         <footer className="mt-16 border-t border-zinc-800 pt-6 text-xs text-zinc-600">
@@ -27,7 +32,9 @@ export default function AccountPage() {
   );
 }
 
-async function AccountContent() {
+async function AccountContent({ searchParams }: { searchParams: AccountSearchParams }) {
+  const { view } = await searchParams;
+  const messagesView = view === 'messages';
   const user = await getCurrentUser();
 
   if (!user) {
@@ -47,6 +54,8 @@ async function AccountContent() {
     month: '2-digit',
     day: '2-digit',
   }).format(user.createdAt);
+  const { items, unreadCount } = await getNotifications(user.id);
+  const roleBadge = roleStyle(user.role);
 
   const roleNote =
     user.role === 'MASTER'
@@ -75,7 +84,10 @@ async function AccountContent() {
           <h1 className="truncate text-2xl font-bold tracking-tight">{user.nickname}</h1>
           <p className="mt-1 truncate text-sm text-zinc-400">{user.email}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-            <span className={`rounded-full border px-2 py-0.5 ${roleStyle(user.role)}`}>
+            <span
+              className="rounded-full px-2 py-0.5 font-medium"
+              style={{ backgroundColor: roleBadge.bg, color: roleBadge.fg }}
+            >
               {roleLabel(user.role)}
             </span>
             <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-zinc-300">
@@ -86,6 +98,7 @@ async function AccountContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <MessageLink active={messagesView} unreadCount={unreadCount} />
           {canAccessAdmin(user.role) && (
             <Link
               href="/admin"
@@ -103,14 +116,18 @@ async function AccountContent() {
             </button>
           </form>
         </div>
+
+        <div className="w-full border-t border-zinc-800 pt-3 text-xs leading-6 text-zinc-500">
+          <p>{roleNote}</p>
+          <p>Capso 默认为 0；活动系统上线后，完成活动会按活动规则增加。</p>
+        </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 text-xs leading-6 text-zinc-500">
-        <p>{roleNote}</p>
-        <p>Capso 默认为 0；活动系统上线后，完成活动会按活动规则增加。</p>
-      </div>
-
-      <ProfileSettings nickname={user.nickname} />
+      {messagesView ? (
+        <MessageSection initialItems={items} />
+      ) : (
+        <ProfileSettings nickname={user.nickname} />
+      )}
     </section>
   );
 }

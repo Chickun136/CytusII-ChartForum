@@ -40,7 +40,8 @@ export async function SiteHeader() {
               )}
               <span className="max-w-[10rem] truncate">{user.nickname}</span>
               <span
-                className={`rounded-full border px-1.5 py-0.5 text-[10px] ${roleStyle(user.role)}`}
+                className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                style={{ backgroundColor: roleStyle(user.role).bg, color: roleStyle(user.role).fg }}
               >
                 {roleLabel(user.role)}
               </span>

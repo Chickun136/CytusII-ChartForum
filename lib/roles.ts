@@ -7,10 +7,10 @@ const ROLE_LABELS: Record<Role, string> = {
   PLAYER: 'Player',
 };
 
-const ROLE_STYLES: Record<Role, string> = {
-  MASTER: 'border-amber-400/60 bg-amber-400/10 text-amber-200',
-  ADMIN: 'border-cyan-400/60 bg-cyan-400/10 text-cyan-200',
-  PLAYER: 'border-zinc-700 bg-zinc-800/50 text-zinc-300',
+const ROLE_STYLES: Record<Role, { bg: string; fg: string }> = {
+  MASTER: { bg: '#452E13', fg: '#FFC000' },
+  ADMIN: { bg: '#002E1D', fg: '#00A96B' },
+  PLAYER: { bg: '#330033', fg: '#FF33FF' },
 };
 
 export function isRole(value: string | null | undefined): value is Role {
