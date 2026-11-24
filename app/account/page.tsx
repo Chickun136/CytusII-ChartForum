@@ -2,9 +2,11 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { logoutAction } from './actions';
 import { AuthForms } from '@/components/auth-forms';
+import { MessageCenter } from '@/components/message-center';
 import { ProfileSettings } from '@/components/profile-settings';
 import { SiteHeader, SiteHeaderSkeleton } from '@/components/site-header';
 import { getCurrentUser } from '@/lib/auth';
+import { getNotifications } from '@/lib/notifications';
 import { canAccessAdmin, roleLabel, roleStyle } from '@/lib/roles';
 
 export default function AccountPage() {
@@ -47,6 +49,7 @@ async function AccountContent() {
     month: '2-digit',
     day: '2-digit',
   }).format(user.createdAt);
+  const { items, unreadCount } = await getNotifications(user.id);
 
   const roleNote =
     user.role === 'MASTER'
@@ -86,6 +89,7 @@ async function AccountContent() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <MessageCenter initialItems={items} unreadCount={unreadCount} />
           {canAccessAdmin(user.role) && (
             <Link
               href="/admin"

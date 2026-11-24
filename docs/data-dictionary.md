@@ -209,6 +209,46 @@ SCANLINE = BPM × 960 / len
 - 会话 Cookie `cytus_session`：HttpOnly、SameSite=Lax，生产环境加 Secure
 - 头像文件保存在 `data/avatars/`（`AVATAR_DIR` 可覆盖），单文件 ≤ 1 MB，仅接受 PNG/JPG/WebP
 
+### 5.6 `Comment` / `CommentLike` / `Notification`（评论与消息）
+
+`Comment`：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | String @id | cuid |
+| `songId` | String | 关联 `Song`，级联删除 |
+| `userId` | String | 评论作者，关联 `User`，级联删除 |
+| `parentId` | String? | 为空表示一级评论；回复统一挂到一级评论下 |
+| `content` | String | 纯文本，最多 500 字 |
+| `createdAt` | DateTime | 发表时间 |
+
+`CommentLike`：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | String @id | cuid |
+| `commentId` | String | 关联 `Comment`，级联删除 |
+| `userId` | String | 点赞用户，关联 `User`，级联删除 |
+| `createdAt` | DateTime | 点赞时间 |
+
+- `@@unique([commentId, userId])`：同一用户对同一评论只能点赞一次，再次点击取消。
+
+`Notification`：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | String @id | cuid |
+| `recipientId` | String | 接收者，关联 `User`，级联删除 |
+| `actorId` | String | 触发者，关联 `User`，级联删除 |
+| `type` | String | `LIKE` 或 `REPLY` |
+| `commentId` | String | 被赞/被回复的评论，关联 `Comment`，级联删除 |
+| `isRead` | Boolean | 默认 `false`，打开消息中心后标记已读 |
+| `createdAt` / `updatedAt` | DateTime | 最近一次互动时间 |
+
+- `@@unique([recipientId, type, commentId])`：同一评论的同类互动只保留一条消息。
+- 消息列表中的「等 N 人」分别来自该评论的点赞数 / 回复数。
+- 取消点赞后若该评论已无点赞，对应 `LIKE` 消息会被删除。
+
 ## 6. 数据管线命令
 
 ```powershell
