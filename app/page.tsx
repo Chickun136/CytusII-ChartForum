@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { Suspense } from 'react';
 import { Pagination } from '@/components/pagination';
 import { SearchControls } from '@/components/search-controls';
+import { SiteHeader, SiteHeaderSkeleton } from '@/components/site-header';
 import { SongCard } from '@/components/song-card';
 import { getCharacters, getSongCount, searchSongs, type SongSort } from '@/lib/songs';
 
@@ -20,8 +21,12 @@ const MOBILE_UA = /Mobi|Android|iPhone|iPod|Windows Phone/i;
 export default function Home({ searchParams }: { searchParams: SearchParams }) {
   return (
     <main className="min-h-screen bg-[#050608] text-zinc-100">
-      <div className="mx-auto max-w-5xl px-5 py-12 sm:px-8">
-        <header className="border-b border-zinc-800 pb-8">
+      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-8">
+        <Suspense fallback={<SiteHeaderSkeleton />}>
+          <SiteHeader />
+        </Suspense>
+
+        <header className="mt-8 border-b border-zinc-800 pb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">
             Cytus II Chart Forum
           </p>

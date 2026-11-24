@@ -16,3 +16,4 @@ next-env.d.ts
 *.pem
 prisma/*.db
 prisma/*.db-journal
+data/avatars/
