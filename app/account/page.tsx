@@ -55,6 +55,7 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
     day: '2-digit',
   }).format(user.createdAt);
   const { items, unreadCount } = await getNotifications(user.id);
+  const roleBadge = roleStyle(user.role);
 
   const roleNote =
     user.role === 'MASTER'
@@ -83,7 +84,10 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
           <h1 className="truncate text-2xl font-bold tracking-tight">{user.nickname}</h1>
           <p className="mt-1 truncate text-sm text-zinc-400">{user.email}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-            <span className={`rounded-full border px-2 py-0.5 ${roleStyle(user.role)}`}>
+            <span
+              className="rounded-full px-2 py-0.5 font-medium"
+              style={{ backgroundColor: roleBadge.bg, color: roleBadge.fg }}
+            >
               {roleLabel(user.role)}
             </span>
             <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-zinc-300">

@@ -78,7 +78,8 @@ async function AdminContent() {
                 </td>
                 <td className="px-4 py-3">
                   <span
-                    className={`inline-flex rounded-full border px-2 py-0.5 text-xs ${roleStyle(item.role)}`}
+                    className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium"
+                    style={{ backgroundColor: roleStyle(item.role).bg, color: roleStyle(item.role).fg }}
                   >
                     {roleLabel(item.role)}
                   </span>
