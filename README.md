@@ -77,7 +77,20 @@ GET /api/search?q=         搜索 JSON 接口
 
 ## 封面资源
 
-曲绘放入 `public/covers/<songId>.webp`，再把 `Song.coverUrl` 填成 `/covers/<songId>.webp` 即可显示；未填写时卡片显示占位块。上线后可改为对象存储或 CDN 的绝对 URL。
+曲绘源目录为工作区的 `Cytus II谱面数据/Cytus II 全曲绘 5.3/`，按角色分文件夹，其中 `square/` 为 1:1 正方形曲绘。导入命令：
+
+```powershell
+npm run db:covers
+# 或
+node scripts/import-covers.mjs
+```
+
+- 匹配规则：文件名 `<songId>.png` 对应 `Song.id`；同名文件优先使用 `square/`，其次角色文件夹。
+- 处理：用 `sharp` 居中裁成正方形、最长边不超过 512，输出 WebP（质量 82）到 `public/covers/<songId>.webp`，并写入 `Song.coverUrl`。
+- 可选参数：`--source <目录>`、`--out <目录>`、`--force`（强制重转）、`--dry-run`（只统计不写文件）；也可用 `COVER_SOURCE_DIR` / `COVER_OUTPUT_DIR` 指定目录。
+- 幂等：输出文件比源文件新时直接复用；重复执行不会重复转换。
+- 695 张曲绘约 22 MB；未安装 `sharp` 时脚本会回退为复制原图，体积明显更大。
+- 上线后可把 `coverUrl` 改为对象存储或 CDN 的绝对 URL，前端无需改动。
 
 ## 曲目 / 谱面 / 词条维护流程（手动）
 
@@ -320,6 +333,7 @@ CytusII-ChartForum/
 ├─ scripts/                     离线数据与维护脚本
 │  ├─ fetch-metadata.mjs        抓取曲目元数据
 │  ├─ import-charts.mjs         谱面入库（拼音 / 别名 / 排序）
+│  ├─ import-covers.mjs         曲绘转 WebP 并写入 coverUrl
 │  ├─ validate-charts.mjs       谱面数据校验
 │  ├─ render-preview.mjs        单谱 SVG 渲染原型
 │  ├─ render-coverage.mjs       全量渲染覆盖报告
@@ -330,6 +344,9 @@ CytusII-ChartForum/
 │  ├─ schema.prisma             Song / Chart / Alias / User / Comment / Report / Event
 │  ├─ migrations/               数据库迁移
 │  └─ dev.db                    SQLite 数据库（未提交）
+│
+├─ public/
+│  └─ covers/                   曲绘 WebP（由 import-covers 生成）
 │
 ├─ data/
 │  ├─ metadata/songs.json       695 首曲目元数据
