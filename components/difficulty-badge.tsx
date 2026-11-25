@@ -12,7 +12,7 @@ export function DifficultyBadge({
   const style = difficultyStyle(name);
   return (
     <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold tracking-wide ${className}`}
+      className={`inline-flex items-center rounded-md px-2 py-1 text-[11px] font-bold tracking-wide ${className}`}
       style={{ backgroundColor: style.bg, color: style.fg }}
     >
       {name}
