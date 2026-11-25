@@ -317,7 +317,7 @@ export function ChartViewer({
 
       {downloadError && <p className="mt-2 text-xs text-rose-300">{downloadError}</p>}
 
-      <div className="mt-4 flex flex-col gap-3 lg:mx-auto lg:w-[calc(75%_+_5rem)] lg:max-w-full lg:flex-row lg:items-stretch lg:gap-4">
+      <div className="mx-auto mt-4 flex w-full flex-col gap-3 lg:w-[calc(75%_+_5rem)] lg:max-w-full lg:flex-row lg:items-stretch lg:gap-4">
         <div
           ref={viewerRef}
           className="min-w-0 flex-1 overflow-auto rounded-xl border border-zinc-800 bg-[#050608]"
@@ -330,14 +330,14 @@ export function ChartViewer({
               src={imageUrl}
               alt={`${chart.difficultyName} 第 ${page + 1} 页`}
               style={{ width: `${zoom * 100}%` }}
-              className="block h-auto max-w-none"
+              className="mx-auto block h-auto max-w-none"
             />
           )}
         </div>
 
         {!comingSoon && (
           <div className="shrink-0 lg:w-16 lg:min-w-16 lg:max-w-16">
-            <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/40 p-2 lg:h-full lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/40 p-2 lg:h-full lg:flex-col lg:flex-nowrap lg:items-stretch lg:justify-start lg:gap-1">
               {PAGE_STEPS.slice(0, 2).map((step) => {
                 const disabled = page + step < 0;
                 return (
