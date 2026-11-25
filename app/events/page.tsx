@@ -12,10 +12,12 @@ export default function EventsPage() {
         </Suspense>
 
         <section className="mt-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">
-            Activities
-          </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight">活动</h1>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">活动</h1>
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">
+              Activities
+            </span>
+          </div>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
             由 Master / Admin 发布的活动会展示在这里。活动类型与参与方式将在后续版本补充。
           </p>

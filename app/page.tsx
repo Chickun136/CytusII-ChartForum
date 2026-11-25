@@ -27,7 +27,12 @@ export default function Home({ searchParams }: { searchParams: SearchParams }) {
         </Suspense>
 
         <header className="mt-8 border-b border-zinc-800 pb-8">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">谱面查询器</h1>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">谱面查询器</h1>
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">
+              Chart Searcher
+            </span>
+          </div>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
             支持歌名、艺术家、角色、拼音全拼、拼音首字母与外号搜索。例：
             <span className="mx-1 text-zinc-200">bwfm-&gt;Bullet Waiting for Me</span>

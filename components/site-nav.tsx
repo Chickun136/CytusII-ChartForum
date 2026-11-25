@@ -30,7 +30,7 @@ export function SiteNav({ showAdmin }: SiteNavProps) {
             key={link.href}
             href={link.href}
             aria-current={active ? 'page' : undefined}
-            className={`min-w-20 rounded-full px-3 py-1 text-center font-medium transition ${
+            className={`w-20 shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-center font-medium transition ${
               active
                 ? 'bg-cyan-500/15 text-cyan-200'
                 : 'text-zinc-400 hover:text-cyan-200'
