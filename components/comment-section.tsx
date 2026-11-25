@@ -1,18 +1,30 @@
 import Link from 'next/link';
 import { toggleCommentLikeAction } from '@/app/songs/[id]/comment-actions';
 import { CommentForm } from '@/components/comment-form';
+import { DeleteCommentButton } from '@/components/delete-comment-button';
+import { ReportForm } from '@/components/report-form';
 import { ReplyBox } from '@/components/reply-box';
 import { getCurrentUser } from '@/lib/auth';
 import { getSongComments, type CommentView } from '@/lib/comments';
-import { formatRelativeTime } from '@/lib/time';
+import { getActiveMute } from '@/lib/moderation';
+import { canDeleteComment } from '@/lib/permissions';
+import { formatDateTime, formatRelativeTime } from '@/lib/time';
 
 type CommentSectionProps = {
   songId: string;
 };
 
+type Viewer = { id: string; role: string };
+
 export async function CommentSection({ songId }: CommentSectionProps) {
   const user = await getCurrentUser();
-  const comments = await getSongComments(songId, user?.id);
+  const [comments, mute] = await Promise.all([
+    getSongComments(songId, user?.id),
+    user ? getActiveMute(user.id) : Promise.resolve(null),
+  ]);
+
+  const mutedUntil = mute?.muteUntil ? formatDateTime(mute.muteUntil) : null;
+  const viewer: Viewer | null = user ? { id: user.id, role: user.role } : null;
   const total = comments.reduce((sum, comment) => sum + 1 + comment.replies.length, 0);
 
   return (
@@ -25,12 +37,18 @@ export async function CommentSection({ songId }: CommentSectionProps) {
 
       <div className="mt-5">
         {user ? (
-          <div className="flex gap-3">
-            <Avatar author={{ nickname: user.nickname, avatarUrl: user.avatarUrl }} />
-            <div className="min-w-0 flex-1">
-              <CommentForm songId={songId} />
+          mutedUntil ? (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs leading-6 text-amber-200">
+              您已被限制评论功能，{mutedUntil} 后方可正常发布评论。
             </div>
-          </div>
+          ) : (
+            <div className="flex gap-3">
+              <Avatar author={{ nickname: user.nickname, avatarUrl: user.avatarUrl }} />
+              <div className="min-w-0 flex-1">
+                <CommentForm songId={songId} />
+              </div>
+            </div>
+          )
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/30 px-4 py-3">
             <p className="text-sm text-zinc-400">登录后可以评论、点赞和回复。</p>
@@ -57,7 +75,12 @@ export async function CommentSection({ songId }: CommentSectionProps) {
               id={`comment-${comment.id}`}
               className="border-b border-zinc-800/80 py-5"
             >
-              <CommentBody comment={comment} songId={songId} loggedIn={Boolean(user)} />
+              <CommentBody
+                comment={comment}
+                songId={songId}
+                viewer={viewer}
+                muted={Boolean(mutedUntil)}
+              />
               {comment.replies.length > 0 && (
                 <div className="mt-4 ml-12 border-l border-zinc-800 pl-4">
                   {comment.replies.map((reply) => (
@@ -65,7 +88,8 @@ export async function CommentSection({ songId }: CommentSectionProps) {
                       <CommentBody
                         comment={reply}
                         songId={songId}
-                        loggedIn={Boolean(user)}
+                        viewer={viewer}
+                        muted={Boolean(mutedUntil)}
                         compact
                       />
                     </div>
@@ -83,14 +107,26 @@ export async function CommentSection({ songId }: CommentSectionProps) {
 function CommentBody({
   comment,
   songId,
-  loggedIn,
+  viewer,
+  muted,
   compact = false,
 }: {
   comment: CommentView;
   songId: string;
-  loggedIn: boolean;
+  viewer: Viewer | null;
+  muted: boolean;
   compact?: boolean;
 }) {
+  const loggedIn = Boolean(viewer);
+  const canDelete =
+    Boolean(viewer) &&
+    !comment.deleted &&
+    canDeleteComment(viewer, {
+      userId: comment.author.id,
+      authorRole: comment.author.role,
+    });
+  const canReport = Boolean(viewer) && !comment.deleted && viewer?.id !== comment.author.id;
+
   return (
     <div className="flex gap-3">
       <Avatar author={comment.author} compact={compact} />
@@ -99,13 +135,27 @@ function CommentBody({
           <span className="text-sm font-medium text-zinc-200">{comment.author.nickname}</span>
           <span className="text-xs text-zinc-600">{formatRelativeTime(comment.createdAt)}</span>
         </div>
-        <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">
-          {comment.content}
-        </p>
-        <div className="mt-2 flex items-center gap-4">
-          <LikeButton comment={comment} loggedIn={loggedIn} />
-          {!compact && <ReplyBox songId={songId} commentId={comment.id} />}
-        </div>
+
+        {comment.deleted ? (
+          <p className="mt-1 text-sm italic leading-6 text-zinc-500">
+            {comment.deletedBySelf ? '该评论已被删除' : '该评论已被管理员删除'}
+          </p>
+        ) : (
+          <>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">
+              {comment.content}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-4">
+              <LikeButton comment={comment} loggedIn={loggedIn} />
+              {!compact && !muted && <ReplyBox songId={songId} commentId={comment.id} />}
+              {!compact && muted && (
+                <span className="text-xs text-amber-300/80">禁言期间暂不能回复</span>
+              )}
+              {canDelete && <DeleteCommentButton commentId={comment.id} />}
+              {canReport && <ReportForm commentId={comment.id} />}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

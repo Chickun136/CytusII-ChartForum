@@ -3,7 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
+import { getActiveMute } from '@/lib/moderation';
+import { canDeleteComment } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
+import { formatDateTime } from '@/lib/time';
 
 const MAX_COMMENT_LENGTH = 500;
 
@@ -15,6 +18,13 @@ export async function createCommentAction(
 ): Promise<CommentActionState> {
   const user = await getCurrentUser();
   if (!user) redirect('/account');
+
+  const mute = await getActiveMute(user.id);
+  if (mute?.muteUntil) {
+    return {
+      error: `您已被限制评论功能，${formatDateTime(mute.muteUntil)} 后方可正常发布评论。`,
+    };
+  }
 
   const songId = String(formData.get('songId') ?? '').trim();
   const parentIdRaw = String(formData.get('parentId') ?? '').trim();
@@ -36,9 +46,10 @@ export async function createCommentAction(
   if (parentIdRaw) {
     const parent = await prisma.comment.findUnique({
       where: { id: parentIdRaw },
-      select: { id: true, songId: true, userId: true, parentId: true },
+      select: { id: true, songId: true, userId: true, parentId: true, deletedAt: true },
     });
     if (!parent || parent.songId !== songId) return { error: '回复的评论不存在。' };
+    if (parent.deletedAt) return { error: '回复的评论已被删除。' };
 
     parentId = parent.parentId ?? parent.id;
     if (parent.parentId) {
@@ -81,6 +92,60 @@ export async function createCommentAction(
   redirect(`/songs/${songId}#comment-${parentId ?? comment.id}`);
 }
 
+export async function deleteCommentAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/account');
+
+  const commentId = String(formData.get('commentId') ?? '').trim();
+  if (!commentId) return;
+
+  const comment = await prisma.comment.findUnique({
+    where: { id: commentId },
+    select: {
+      id: true,
+      songId: true,
+      userId: true,
+      parentId: true,
+      deletedAt: true,
+      user: { select: { role: true } },
+    },
+  });
+  if (!comment || comment.deletedAt) return;
+  if (!canDeleteComment(user, { userId: comment.userId, authorRole: comment.user.role })) {
+    return;
+  }
+
+  const now = new Date();
+  const replies = await prisma.comment.findMany({
+    where: { parentId: comment.id },
+    select: { id: true },
+  });
+  const ids = [comment.id, ...replies.map((reply) => reply.id)];
+
+  await prisma.$transaction([
+    prisma.comment.updateMany({
+      where: { id: { in: ids }, deletedAt: null },
+      data: { deletedAt: now, deletedById: user.id, deleteReason: 'MANUAL' },
+    }),
+    prisma.report.updateMany({
+      where: { commentId: { in: ids }, status: 'PENDING' },
+      data: {
+        status: 'RESOLVED',
+        handledById: user.id,
+        handledAt: now,
+        resolution: '评论已被删除',
+      },
+    }),
+    prisma.notification.deleteMany({
+      where: { commentId: { in: ids }, type: { in: ['LIKE', 'REPLY'] } },
+    }),
+  ]);
+
+  revalidatePath(`/songs/${comment.songId}`);
+  revalidatePath('/account');
+  revalidatePath('/admin');
+}
+
 export async function toggleCommentLikeAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) redirect('/account');
@@ -90,9 +155,9 @@ export async function toggleCommentLikeAction(formData: FormData) {
 
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
-    select: { id: true, userId: true, songId: true },
+    select: { id: true, userId: true, songId: true, deletedAt: true },
   });
-  if (!comment) return;
+  if (!comment || comment.deletedAt) return;
 
   const existing = await prisma.commentLike.findUnique({
     where: { commentId_userId: { commentId, userId: user.id } },
