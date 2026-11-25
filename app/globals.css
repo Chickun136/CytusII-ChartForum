@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-electrolize), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-electrolize), ui-monospace, SFMono-Regular, monospace;
+}

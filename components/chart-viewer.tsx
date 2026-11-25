@@ -58,7 +58,7 @@ function ComingSoonChart() {
         y="212"
         textAnchor="middle"
         fill="#27BF8D"
-        fontFamily="'Rajdhani', 'Segoe UI', sans-serif"
+        style={{ fontFamily: "var(--font-electrolize), 'Segoe UI', sans-serif" }}
         fontSize="34"
         fontWeight="700"
         letterSpacing="1"
