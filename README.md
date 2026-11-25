@@ -24,6 +24,29 @@ npm run build
 npm start
 ```
 
+### 局域网访问时按钮无响应（开发模式）
+
+用局域网 IP（如 `http://172.22.96.15:3000`）在手机或另一台设备上打开开发服务器时，页面和谱面图能正常显示，但翻页、评分、评论、难度切换等按钮全部没有反应。
+
+**原因**：Next.js 16 开发服务器默认阻止跨来源访问 `/_next/*` 开发资源。HTML 可以正常服务端渲染，但客户端 JS 没有完成 hydration；浏览器控制台通常没有明显报错，服务端日志会出现：
+
+```text
+Blocked cross-origin request to Next.js dev resource /_next/hmr from "172.22.96.15"
+```
+
+**解决**：把访问时使用的 IP 加入 `next.config.ts` 的 `allowedDevOrigins`，然后重启 `npm run dev`：
+
+```ts
+const nextConfig: NextConfig = {
+  allowedDevOrigins: ["172.22.96.15"],
+  // ...
+};
+```
+
+- IP 变化后需要同步修改这里的值
+- 该配置只在 `npm run dev` 生效；`npm run build && npm start` 生产模式没有此限制
+- 在本机开发时直接访问 `http://localhost:3000` 不会触发该问题
+
 ## 数据与渲染脚本
 
 谱面原始 JSON 不放入仓库，默认位于工作区的 `Cytus II谱面数据/Cytus II 全谱面 5.3/`。
