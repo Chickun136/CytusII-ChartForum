@@ -43,8 +43,12 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
   if (!user) {
     return (
       <section className="mt-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">Account</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">个人账号</h1>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">个人账号</h1>
+          <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">
+            Account
+          </span>
+        </div>
         <p className="mt-2 text-sm text-zinc-400">
           登录或注册以保存昵称、头像与 Capso，并在活动上线后领取奖励。
         </p>
@@ -71,8 +75,7 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
 
   return (
     <section className="mt-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">Account</p>
-      <div className="mt-3 flex flex-wrap items-center gap-5 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+      <div className="flex flex-wrap items-center gap-5 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
         {user.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -87,7 +90,12 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
         )}
 
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-2xl font-bold tracking-tight">{user.nickname}</h1>
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <h1 className="truncate text-2xl font-bold tracking-tight">{user.nickname}</h1>
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">
+              Account
+            </span>
+          </div>
           <p className="mt-1 truncate text-sm text-zinc-400">{user.email}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
             <span
