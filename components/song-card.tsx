@@ -41,12 +41,6 @@ export function SongCard({ song, query }: { song: SongWithCharts; query: string 
               />
             ))}
           </div>
-
-          {song.aliases.length > 0 && (
-            <p className="line-clamp-1 text-xs text-zinc-500">
-              别名：{song.aliases.map((alias) => alias.alias).join('、')}
-            </p>
-          )}
         </div>
 
         <div className="w-[38%] max-w-[180px] shrink-0">
