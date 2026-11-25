@@ -135,9 +135,9 @@ export function SearchControls({
               type="button"
               onClick={() => toggleCharacter(character)}
               aria-pressed={active}
-              className={`rounded-full border px-3 py-1.5 text-[13px] transition ${
+              className={`rounded-full border px-3 py-1.5 text-[13px] font-medium transition ${
                 active
-                  ? 'border-cyan-400 bg-cyan-500 font-medium text-zinc-950'
+                  ? 'border-cyan-400 bg-cyan-500 text-zinc-950'
                   : 'border-zinc-800 text-zinc-400 hover:border-cyan-500/60 hover:text-cyan-200'
               }`}
             >
