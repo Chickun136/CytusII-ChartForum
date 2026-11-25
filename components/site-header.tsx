@@ -14,7 +14,7 @@ export async function SiteHeader() {
           href="/"
           className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-400"
         >
-          Cytus II
+          Cytus II Chart Forum
         </Link>
         <SiteNav showAdmin={Boolean(user && canAccessAdmin(user.role))} />
       </div>
