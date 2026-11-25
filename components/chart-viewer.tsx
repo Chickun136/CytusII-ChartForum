@@ -85,7 +85,7 @@ export function ChartViewer({
     return chaos >= 0 ? chaos : 0;
   });
   const [page, setPage] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState({ done: 0, total: 0 });
   const [downloadError, setDownloadError] = useState('');
@@ -93,9 +93,18 @@ export function ChartViewer({
   const chart = charts[selected] ?? charts[0];
 
   useEffect(() => {
-    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', onChange);
-    return () => document.removeEventListener('fullscreenchange', onChange);
+    const element = viewerRef.current;
+    if (!element) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      setZoom((current) => {
+        const next = current - event.deltaY * 0.001;
+        return Math.min(3, Math.max(0.5, Number(next.toFixed(2))));
+      });
+    };
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
   }, []);
 
   useEffect(() => {
@@ -125,15 +134,6 @@ export function ChartViewer({
   const selectChart = (index: number) => {
     setSelected(index);
     setPage(0);
-  };
-
-  const toggleFullscreen = async () => {
-    if (!viewerRef.current) return;
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-    } else {
-      await viewerRef.current.requestFullscreen();
-    }
   };
 
   const imageUrl = `/api/charts/${chart.id}/${page}`;
@@ -271,6 +271,9 @@ export function ChartViewer({
           {chart.difficultyLevel ? ` ${chart.difficultyLevel}` : ''}
           <span className="mx-2 text-zinc-700">|</span>
           {comingSoon ? 'coming s∞n' : `${chart.pageCount} 页 · ${chart.noteCount} 音符`}
+          {!comingSoon && (
+            <span className="ml-2 hidden text-zinc-600 sm:inline">Ctrl + 滚轮缩放</span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!comingSoon && (
@@ -295,73 +298,95 @@ export function ChartViewer({
               </button>
             </>
           )}
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-cyan-500/60 hover:text-cyan-200"
-          >
-            {isFullscreen ? '退出全屏' : '全屏'}
-          </button>
+          <div className="flex items-center gap-2 rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-400">
+            <span className="font-mono tabular-nums text-zinc-300">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              disabled={zoom === 1}
+              title="Ctrl + 滚轮缩放，拖动滚动条平移"
+              className="text-zinc-300 transition enabled:hover:text-cyan-200 disabled:opacity-40"
+            >
+              重置
+            </button>
+          </div>
         </div>
       </div>
 
       {downloadError && <p className="mt-2 text-xs text-rose-300">{downloadError}</p>}
 
-      <div
-        ref={viewerRef}
-        className="mt-4 overflow-auto rounded-xl border border-zinc-800 bg-[#050608]"
-      >
-        {comingSoon ? (
-          <ComingSoonChart />
-        ) : (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="mx-auto mt-4 flex w-full flex-col gap-3 lg:w-[calc(75%_+_5rem)] lg:max-w-full lg:flex-row lg:items-stretch lg:gap-4">
+        <div
+          ref={viewerRef}
+          className="min-w-0 flex-1 overflow-auto rounded-xl border border-zinc-800 bg-[#050608]"
+        >
+          {comingSoon ? (
+            <ComingSoonChart />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={imageUrl}
               alt={`${chart.difficultyName} 第 ${page + 1} 页`}
-              className="block h-auto w-full max-w-none"
+              style={{ width: `${zoom * 100}%` }}
+              className="mx-auto block h-auto max-w-none"
             />
-          </>
+          )}
+        </div>
+
+        {!comingSoon && (
+          <div className="shrink-0 lg:w-16 lg:min-w-16 lg:max-w-16">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/40 p-2 lg:h-full lg:flex-col lg:flex-nowrap lg:items-stretch lg:justify-start lg:gap-1">
+              {PAGE_STEPS.slice(0, 2).map((step) => {
+                const disabled = page + step < 0;
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => jumpPage(step)}
+                    disabled={disabled}
+                    aria-label={`后退 ${Math.abs(step)} 页`}
+                    className="w-9 rounded-md border border-zinc-700 px-0 py-1.5 font-mono text-sm tabular-nums text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40 lg:w-full"
+                  >
+                    {step}
+                  </button>
+                );
+              })}
+
+              <span className="overflow-hidden whitespace-nowrap px-1 text-center text-xs tabular-nums text-zinc-400 lg:w-full lg:px-0 lg:py-1 lg:text-[11px]">
+                {page + 1} / {chart.pageCount}
+              </span>
+
+              {PAGE_STEPS.slice(2).map((step) => {
+                const disabled = page + step > chart.pageCount - 1;
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => jumpPage(step)}
+                    disabled={disabled}
+                    aria-label={`前进 ${step} 页`}
+                    className="w-9 rounded-md border border-zinc-700 px-0 py-1.5 font-mono text-sm tabular-nums text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40 lg:w-full"
+                  >
+                    +{step}
+                  </button>
+                );
+              })}
+
+              <input
+                type="range"
+                min={0}
+                max={chart.pageCount - 1}
+                value={page}
+                onChange={(event) => setPage(Number(event.target.value))}
+                aria-label="选择页码"
+                className="h-1.5 w-full cursor-pointer accent-cyan-400 lg:h-auto lg:min-h-0 lg:flex-1 lg:w-1.5 lg:self-center lg:[direction:rtl] lg:[writing-mode:vertical-lr]"
+              />
+            </div>
+          </div>
         )}
       </div>
-
-      {!comingSoon && (
-        <div className="mt-4 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-1.5">
-            {PAGE_STEPS.map((step) => {
-              const target = page + step;
-              const disabled = target < 0 || target > chart.pageCount - 1;
-              return (
-                <button
-                  key={step}
-                  type="button"
-                  onClick={() => jumpPage(step)}
-                  disabled={disabled}
-                  aria-label={step < 0 ? `后退 ${Math.abs(step)} 页` : `前进 ${step} 页`}
-                  className="rounded-md border border-zinc-700 px-2.5 py-1.5 font-mono text-sm tabular-nums text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {step > 0 ? `+${step}` : step}
-                </button>
-              );
-            })}
-            <span className="ml-2 text-xs text-zinc-400">
-              {page + 1} / {chart.pageCount}
-            </span>
-          </div>
-
-          <div className="flex flex-1 items-center gap-3 sm:justify-center">
-            <input
-              type="range"
-              min={0}
-              max={chart.pageCount - 1}
-              value={page}
-              onChange={(event) => setPage(Number(event.target.value))}
-              aria-label="选择页码"
-              className="h-1.5 w-full max-w-xs cursor-pointer accent-cyan-400"
-            />
-          </div>
-        </div>
-      )}
 
       <ChartRating chartId={chart.id} />
     </section>
