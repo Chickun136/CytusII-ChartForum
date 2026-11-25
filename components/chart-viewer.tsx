@@ -1,6 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { rateChart } from '@/app/songs/[id]/rating-actions';
+import type { ChartRatingSummary } from '@/lib/ratings';
 import { DifficultyBadge } from './difficulty-badge';
 
 export type ChartSummary = {
@@ -73,10 +76,14 @@ function sanitizeFileName(value: string) {
 
 export function ChartViewer({
   charts,
+  ratings,
+  canRate,
   title,
   artist,
 }: {
   charts: ChartSummary[];
+  ratings: Record<string, ChartRatingSummary>;
+  canRate: boolean;
   title: string;
   artist: string;
 }) {
@@ -388,56 +395,63 @@ export function ChartViewer({
         )}
       </div>
 
-      <ChartRating chartId={chart.id} />
+      <ChartRating
+        key={chart.id}
+        chartId={chart.id}
+        initial={ratings[chart.id] ?? { average: 0, count: 0, mine: 0 }}
+        canRate={canRate}
+      />
     </section>
   );
 }
 
-const RATING_STORAGE_PREFIX = 'cytus-chart-rating:';
-const ratingListeners = new Set<() => void>();
-
-function subscribeRating(onChange: () => void) {
-  ratingListeners.add(onChange);
-  window.addEventListener('storage', onChange);
-  return () => {
-    ratingListeners.delete(onChange);
-    window.removeEventListener('storage', onChange);
-  };
-}
-
-function setRatingValue(chartId: string, value: number) {
-  const key = `${RATING_STORAGE_PREFIX}${chartId}`;
-  if (value > 0) {
-    window.localStorage.setItem(key, String(value));
-  } else {
-    window.localStorage.removeItem(key);
-  }
-  ratingListeners.forEach((listener) => listener());
-}
-
-function ChartRating({ chartId }: { chartId: string }) {
-  const rating = useSyncExternalStore(
-    subscribeRating,
-    () => Number(window.localStorage.getItem(`${RATING_STORAGE_PREFIX}${chartId}`)) || 0,
-    () => 0,
-  );
+function ChartRating({
+  chartId,
+  initial,
+  canRate,
+}: {
+  chartId: string;
+  initial: ChartRatingSummary;
+  canRate: boolean;
+}) {
+  const [summary, setSummary] = useState(initial);
   const [hover, setHover] = useState(0);
+  const [error, setError] = useState('');
+  const [pending, startTransition] = useTransition();
 
   const choose = (value: number) => {
-    setRatingValue(chartId, value === rating ? 0 : value);
+    if (!canRate || pending) return;
+    setError('');
+    startTransition(async () => {
+      const result = await rateChart(chartId, value);
+      if (result.ok) {
+        setSummary({ average: result.average, count: result.count, mine: result.mine });
+      } else {
+        setError(result.error);
+      }
+    });
   };
 
-  const active = hover || rating;
+  const active = hover || summary.mine;
+  const average = summary.count > 0 ? summary.average.toFixed(1) : '0.0';
 
   return (
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
       <div>
         <p className="text-sm text-zinc-200">谱面评分</p>
         <p className="mt-1 text-xs text-zinc-500">
-          点击星星打分（0–5 星），再点同一颗可取消；评分暂存于本机。
+          {canRate
+            ? summary.mine > 0
+              ? `你给出了 ${summary.mine} 星，点击其他星星可修改`
+              : '点击星星给出你的评分'
+            : '登录后即可参与评分'}
         </p>
+        {error && <p className="mt-1 text-xs text-rose-300">{error}</p>}
       </div>
-      <div className="flex items-center gap-1" onMouseLeave={() => setHover(0)}>
+      <div
+        className={`flex flex-wrap items-center justify-end gap-1 ${pending ? 'opacity-70' : ''}`}
+        onMouseLeave={() => setHover(0)}
+      >
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             key={value}
@@ -446,9 +460,10 @@ function ChartRating({ chartId }: { chartId: string }) {
             onMouseEnter={() => setHover(value)}
             onFocus={() => setHover(value)}
             onBlur={() => setHover(0)}
+            disabled={!canRate || pending}
             aria-label={`${value} 星`}
-            aria-pressed={rating === value}
-            className="rounded p-0.5 transition hover:scale-110"
+            aria-pressed={summary.mine === value}
+            className="rounded p-0.5 transition enabled:hover:scale-110 disabled:cursor-not-allowed"
           >
             <svg
               viewBox="0 0 24 24"
@@ -460,9 +475,17 @@ function ChartRating({ chartId }: { chartId: string }) {
             </svg>
           </button>
         ))}
-        <span className="ml-2 w-14 text-xs text-zinc-400">
-          {rating > 0 ? `${rating} / 5` : '未评分'}
+        <span className="ml-2 whitespace-nowrap text-xs tabular-nums text-zinc-300">
+          {average} / 5
         </span>
+        <span className="ml-2 whitespace-nowrap text-xs text-zinc-500">
+          {summary.count} 位玩家给出了评分，平均为 {average}
+        </span>
+        {!canRate && (
+          <Link href="/account" className="ml-1 text-xs text-cyan-300 hover:text-cyan-200">
+            去登录
+          </Link>
+        )}
       </div>
     </div>
   );

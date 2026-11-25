@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { ChartViewer, type ChartSummary } from '@/components/chart-viewer';
 import { CommentSection } from '@/components/comment-section';
+import { getCurrentUser } from '@/lib/auth';
+import { getChartRatings } from '@/lib/ratings';
 import { getSong } from '@/lib/songs';
 
 type SongParams = Promise<{ id: string }>;
@@ -17,9 +19,14 @@ export default function SongPage({ params }: { params: SongParams }) {
 
 async function SongContent({ params }: { params: SongParams }) {
   const { id } = await params;
-  const song = await getSong(id);
+  const [song, user] = await Promise.all([getSong(id), getCurrentUser()]);
 
   if (!song) notFound();
+
+  const ratings = await getChartRatings(
+    song.charts.map((chart) => chart.id),
+    user?.id,
+  );
 
   const charts: ChartSummary[] = song.charts.map((chart) => ({
     id: chart.id,
@@ -67,7 +74,13 @@ async function SongContent({ params }: { params: SongParams }) {
           </div>
         </header>
 
-        <ChartViewer charts={charts} title={song.title} artist={song.artist} />
+        <ChartViewer
+          charts={charts}
+          ratings={ratings}
+          canRate={Boolean(user)}
+          title={song.title}
+          artist={song.artist}
+        />
 
         <CommentSection songId={song.id} />
 
