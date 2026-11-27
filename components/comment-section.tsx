@@ -142,9 +142,28 @@ function CommentBody({
           </p>
         ) : (
           <>
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">
-              {comment.content}
-            </p>
+            {comment.content && (
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">
+                {comment.content}
+              </p>
+            )}
+            {comment.imageUrl && (
+              <a
+                href={comment.imageUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="查看大图"
+                className="mt-2 block w-fit"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={comment.imageUrl}
+                  alt="评论图片"
+                  loading="lazy"
+                  className="max-h-60 w-auto max-w-full rounded-lg border-[3px] border-zinc-800 object-contain transition-colors hover:border-cyan-500/60"
+                />
+              </a>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-4">
               <LikeButton comment={comment} loggedIn={loggedIn} />
               {!compact && !muted && <ReplyBox songId={songId} commentId={comment.id} />}

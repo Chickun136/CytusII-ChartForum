@@ -41,6 +41,7 @@ export async function getNotifications(userId: string) {
           select: {
             id: true,
             content: true,
+            imageUrl: true,
             deletedAt: true,
             song: { select: { id: true, title: true } },
             _count: { select: { likes: true, replies: true } },
@@ -61,7 +62,9 @@ export async function getNotifications(userId: string) {
       actor: row.actor,
       comment: {
         id: row.comment.id,
-        content: row.comment.deletedAt ? '该评论已被管理员删除' : row.comment.content,
+        content: row.comment.deletedAt
+          ? '该评论已被管理员删除'
+          : row.comment.content || (row.comment.imageUrl ? '[图片]' : ''),
         songId: row.comment.song.id,
         songTitle: row.comment.song.title,
         deleted: Boolean(row.comment.deletedAt),

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
+import { saveCommentImage } from '@/lib/comment-image';
 import { getActiveMute } from '@/lib/moderation';
 import { canDeleteComment } from '@/lib/permissions';
 import { prisma } from '@/lib/prisma';
@@ -29,12 +30,15 @@ export async function createCommentAction(
   const songId = String(formData.get('songId') ?? '').trim();
   const parentIdRaw = String(formData.get('parentId') ?? '').trim();
   const content = String(formData.get('content') ?? '').trim();
+  const image = formData.get('image');
 
   if (!songId) return { error: '缺少曲目信息。' };
-  if (!content) return { error: '请输入评论内容。' };
   if (content.length > MAX_COMMENT_LENGTH) {
     return { error: `评论不能超过 ${MAX_COMMENT_LENGTH} 个字符。` };
   }
+
+  const hasImage = image instanceof File && image.size > 0;
+  if (!content && !hasImage) return { error: '请输入评论内容或选择图片。' };
 
   const song = await prisma.song.findUnique({ where: { id: songId }, select: { id: true } });
   if (!song) return { error: '曲目不存在。' };
@@ -65,8 +69,17 @@ export async function createCommentAction(
     }
   }
 
+  let imageUrl: string | null = null;
+  if (image instanceof File && image.size > 0) {
+    try {
+      imageUrl = await saveCommentImage(image);
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : '图片上传失败。' };
+    }
+  }
+
   const comment = await prisma.comment.create({
-    data: { songId, userId: user.id, parentId, content },
+    data: { songId, userId: user.id, parentId, content, imageUrl },
   });
 
   if (notifyUserId && notifyCommentId && notifyUserId !== user.id) {

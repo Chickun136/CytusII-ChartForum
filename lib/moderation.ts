@@ -40,6 +40,7 @@ export async function getReportQueue(actor: { id: string; role: string }) {
         select: {
           id: true,
           content: true,
+          imageUrl: true,
           deletedAt: true,
           song: { select: { id: true, title: true } },
           user: { select: { id: true, nickname: true, role: true } },
@@ -68,7 +69,9 @@ export async function getReportQueue(actor: { id: string; role: string }) {
       commentId: row.comment.id,
       songId: row.comment.song.id,
       songTitle: row.comment.song.title,
-      commentContent: row.comment.deletedAt ? '该评论已被管理员删除' : row.comment.content,
+      commentContent: row.comment.deletedAt
+        ? '该评论已被管理员删除'
+        : row.comment.content || (row.comment.imageUrl ? '[图片]' : ''),
       author: row.comment.user,
       reports: [entry],
       pendingCount: 1,
@@ -120,6 +123,7 @@ export async function getMyReports(userId: string): Promise<MyReportView[]> {
         select: {
           id: true,
           content: true,
+          imageUrl: true,
           deletedAt: true,
           song: { select: { id: true, title: true } },
         },
@@ -142,7 +146,9 @@ export async function getMyReports(userId: string): Promise<MyReportView[]> {
       id: row.comment.id,
       songId: row.comment.song.id,
       songTitle: row.comment.song.title,
-      content: row.comment.deletedAt ? '该评论已被管理员删除' : row.comment.content,
+      content: row.comment.deletedAt
+        ? '该评论已被管理员删除'
+        : row.comment.content || (row.comment.imageUrl ? '[图片]' : ''),
       deleted: Boolean(row.comment.deletedAt),
     },
   }));

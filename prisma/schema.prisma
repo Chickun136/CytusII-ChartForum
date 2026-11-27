@@ -123,6 +123,7 @@ model Comment {
   userId       String
   parentId     String?
   content      String
+  imageUrl     String?
   deletedAt    DateTime?
   deletedById  String?
   deleteReason String?
