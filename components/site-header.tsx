@@ -24,7 +24,7 @@ export async function SiteHeader() {
           <>
             <Link
               href="/account"
-              className="flex items-center gap-2 rounded-full border border-zinc-800 px-2 py-1 text-zinc-300 transition hover:border-cyan-500/60"
+              className="flex items-center gap-2 rounded-full border-[3px] border-zinc-800 px-2 py-1 text-zinc-300 transition hover:border-cyan-500/60"
             >
               {user.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -49,7 +49,7 @@ export async function SiteHeader() {
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="rounded-full border border-zinc-800 px-2.5 py-1.5 text-zinc-400 transition hover:border-zinc-600 hover:text-zinc-200"
+                className="rounded-full border-[3px] border-zinc-800 px-2.5 py-1.5 text-zinc-400 transition hover:border-zinc-600 hover:text-zinc-200"
               >
                 退出
               </button>
@@ -58,7 +58,7 @@ export async function SiteHeader() {
         ) : (
           <Link
             href="/account"
-            className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20"
+            className="rounded-full border-[3px] border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20"
           >
             登录 / 注册
           </Link>

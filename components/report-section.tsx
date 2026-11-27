@@ -3,7 +3,7 @@ import type { MyReportView } from '@/lib/moderation';
 
 export function ReportSection({ items }: { items: MyReportView[] }) {
   return (
-    <section className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/30">
+    <section className="mt-4 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/30">
       <header className="flex flex-wrap items-center gap-3 border-b border-zinc-800 px-4 py-3 sm:px-5">
         <h2 className="text-base font-semibold text-zinc-100 sm:text-lg">我的举报</h2>
         <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">

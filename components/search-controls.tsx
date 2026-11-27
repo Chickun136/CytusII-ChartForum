@@ -121,7 +121,7 @@ export function SearchControls({
           onChange={(event) => setKeyword(event.target.value)}
           placeholder="输入歌名、拼音、首字母或外号…"
           autoComplete="off"
-          className="h-[34px] w-full max-w-md rounded-full border border-zinc-800 bg-zinc-900 px-4 text-[13px] text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+          className="h-[34px] w-full max-w-md rounded-full border-[3px] border-zinc-800 bg-zinc-900 px-4 text-[13px] text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
         />
       </div>
 
@@ -135,7 +135,7 @@ export function SearchControls({
               type="button"
               onClick={() => toggleCharacter(character)}
               aria-pressed={active}
-              className={`rounded-full border px-3 py-1.5 text-[13px] font-medium transition ${
+              className={`rounded-full border-[3px] px-3 py-1.5 text-[13px] font-medium transition ${
                 active
                   ? 'border-cyan-400 bg-cyan-500 text-zinc-950'
                   : 'border-zinc-800 text-zinc-400 hover:border-cyan-500/60 hover:text-cyan-200'
@@ -215,7 +215,7 @@ export function SearchControls({
           id="sort-select"
           value={sortValue}
           onChange={(event) => setSortValue(event.target.value as SongSort)}
-          className="h-[34px] rounded-full border border-zinc-800 bg-zinc-900 px-3 text-[13px] text-zinc-300 outline-none transition focus:border-cyan-500"
+          className="h-[34px] rounded-full border-[3px] border-zinc-800 bg-zinc-900 px-3 text-[13px] text-zinc-300 outline-none transition focus:border-cyan-500"
         >
           <option value="default">默认顺序</option>
           <option value="difficulty-desc">最高难度 ↓</option>

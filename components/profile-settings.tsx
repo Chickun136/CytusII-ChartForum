@@ -14,7 +14,7 @@ export function ProfileSettings({ nickname }: { nickname: string }) {
     <div className="mt-6 grid gap-4 md:grid-cols-2">
       <form
         action={nickAction}
-        className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5"
+        className="rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 p-5"
       >
         <h2 className="text-sm font-semibold text-zinc-200">昵称设置</h2>
         <p className="mt-1 text-xs text-zinc-500">2–20 个字符，显示在顶部菜单与评论区。</p>
@@ -45,7 +45,7 @@ export function ProfileSettings({ nickname }: { nickname: string }) {
 
       <form
         action={avatarAction}
-        className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5"
+        className="rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 p-5"
       >
         <h2 className="text-sm font-semibold text-zinc-200">头像设置</h2>
         <p className="mt-1 text-xs text-zinc-500">支持 PNG / JPG / WebP，最大 1 MB。</p>

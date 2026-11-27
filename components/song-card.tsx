@@ -21,9 +21,9 @@ export function SongCard({ song, query }: { song: SongWithCharts; query: string 
   return (
     <Link
       href={`/songs/${song.id}`}
-      className="group flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 transition hover:border-cyan-500/60 hover:bg-zinc-900 sm:p-5"
+      className="group flex flex-col gap-3 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/50 p-4 transition-colors hover:border-cyan-500/60 sm:p-5"
     >
-      <h2 className="w-full truncate text-base font-semibold leading-6 text-zinc-100 group-hover:text-cyan-200">
+      <h2 className="w-full truncate text-base font-semibold leading-6 text-zinc-100">
         {highlight(song.title, query)}
       </h2>
 

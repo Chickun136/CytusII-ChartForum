@@ -16,7 +16,7 @@ export function AuthForms() {
 
   return (
     <div className="mt-8 max-w-md">
-      <div className="flex gap-1 rounded-full border border-zinc-800 bg-zinc-900/50 p-1 text-sm">
+      <div className="flex gap-1 rounded-full border-[3px] border-zinc-800 bg-zinc-900/50 p-1 text-sm">
         <button
           type="button"
           onClick={() => setMode('login')}

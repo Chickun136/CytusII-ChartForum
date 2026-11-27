@@ -130,7 +130,7 @@ export function ChartViewer({
 
   if (!chart) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-sm text-zinc-400">
+      <div className="rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 p-8 text-sm text-zinc-400">
         暂无可查看的谱面。
       </div>
     );
@@ -272,7 +272,7 @@ export function ChartViewer({
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 px-4 py-3">
         <div className="text-xs text-zinc-400">
           <span className="text-zinc-200">{chart.difficultyName}</span>
           {chart.difficultyLevel ? ` ${chart.difficultyLevel}` : ''}
@@ -327,7 +327,7 @@ export function ChartViewer({
       <div className="mx-auto mt-4 flex w-full flex-col gap-3 lg:w-[calc(75%_+_5rem)] lg:max-w-full lg:flex-row lg:items-stretch lg:gap-4">
         <div
           ref={viewerRef}
-          className="min-w-0 flex-1 overflow-auto rounded-xl border border-zinc-800 bg-[#050608]"
+          className="min-w-0 flex-1 overflow-auto rounded-xl border-[3px] border-zinc-800 bg-[#050608]"
         >
           {comingSoon ? (
             <ComingSoonChart />
@@ -344,7 +344,7 @@ export function ChartViewer({
 
         {!comingSoon && (
           <div className="shrink-0 lg:w-16 lg:min-w-16 lg:max-w-16">
-            <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/40 p-2 lg:h-full lg:flex-col lg:flex-nowrap lg:items-stretch lg:justify-start lg:gap-1">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 p-2 lg:h-full lg:flex-col lg:flex-nowrap lg:items-stretch lg:justify-start lg:gap-1">
               {PAGE_STEPS.slice(0, 2).map((step) => {
                 const disabled = page + step < 0;
                 return (
@@ -436,7 +436,7 @@ function ChartRating({
   const average = summary.count > 0 ? summary.average.toFixed(1) : '0.0';
 
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 px-4 py-3">
       <div>
         <p className="text-sm text-zinc-200">谱面评分</p>
         <p className="mt-1 text-xs text-zinc-500">

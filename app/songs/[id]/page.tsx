@@ -50,24 +50,24 @@ async function SongContent({ params }: { params: SongParams }) {
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{song.title}</h1>
               <p className="mt-2 text-sm text-zinc-400">{song.artist}</p>
             </div>
-            <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-400">
+            <span className="rounded-full border-[3px] border-zinc-700 px-3 py-1 text-xs text-zinc-400">
               {charts.length} 个难度
             </span>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-400">
             {song.character && (
-              <span className="rounded-full border border-zinc-800 px-2.5 py-1">
+              <span className="rounded-full border-[3px] border-zinc-800 px-2.5 py-1">
                 角色：{song.character}
               </span>
             )}
             {song.bpm && (
-              <span className="rounded-full border border-zinc-800 px-2.5 py-1">
+              <span className="rounded-full border-[3px] border-zinc-800 px-2.5 py-1">
                 BPM {song.bpm}
               </span>
             )}
             {song.aliases.length > 0 && (
-              <span className="rounded-full border border-zinc-800 px-2.5 py-1">
+              <span className="rounded-full border-[3px] border-zinc-800 px-2.5 py-1">
                 别名：{song.aliases.map((alias) => alias.alias).join('、')}
               </span>
             )}
@@ -100,7 +100,7 @@ function SongSkeleton() {
         <div className="mt-8 h-10 w-2/3 rounded bg-zinc-900" />
         <div className="mt-4 h-4 w-40 rounded bg-zinc-900" />
         <div className="mt-8 h-12 rounded-xl bg-zinc-900" />
-        <div className="mt-4 aspect-[512/420] rounded-xl border border-zinc-800 bg-zinc-900/40" />
+        <div className="mt-4 aspect-[512/420] rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40" />
       </div>
     </main>
   );

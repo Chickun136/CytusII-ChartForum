@@ -75,7 +75,7 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
 
   return (
     <section className="mt-8">
-      <div className="flex flex-wrap items-center gap-5 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+      <div className="flex flex-wrap items-center gap-5 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 p-5">
         {user.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -104,7 +104,7 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
             >
               {roleLabel(user.role)}
             </span>
-            <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-zinc-300">
+            <span className="rounded-full border-[3px] border-zinc-700 px-2 py-0.5 text-zinc-300">
               Capso {user.capso}
             </span>
             <span className="text-zinc-600">注册于 {created}</span>
@@ -162,10 +162,10 @@ async function AccountContent({ searchParams }: { searchParams: AccountSearchPar
 function AccountSkeleton() {
   return (
     <div className="mt-8 animate-pulse">
-      <div className="h-32 rounded-xl border border-zinc-800 bg-zinc-900/40" />
+      <div className="h-32 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40" />
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <div className="h-44 rounded-xl border border-zinc-800 bg-zinc-900/40" />
-        <div className="h-44 rounded-xl border border-zinc-800 bg-zinc-900/40" />
+        <div className="h-44 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40" />
+        <div className="h-44 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40" />
       </div>
     </div>
   );
