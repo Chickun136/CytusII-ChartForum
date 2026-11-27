@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { ChartViewer, type ChartSummary } from '@/components/chart-viewer';
 import { CommentSection } from '@/components/comment-section';
+import { getCurrentUser } from '@/lib/auth';
+import { getChartRatings } from '@/lib/ratings';
 import { getSong } from '@/lib/songs';
 
 type SongParams = Promise<{ id: string }>;
@@ -17,9 +19,14 @@ export default function SongPage({ params }: { params: SongParams }) {
 
 async function SongContent({ params }: { params: SongParams }) {
   const { id } = await params;
-  const song = await getSong(id);
+  const [song, user] = await Promise.all([getSong(id), getCurrentUser()]);
 
   if (!song) notFound();
+
+  const ratings = await getChartRatings(
+    song.charts.map((chart) => chart.id),
+    user?.id,
+  );
 
   const charts: ChartSummary[] = song.charts.map((chart) => ({
     id: chart.id,
@@ -43,36 +50,42 @@ async function SongContent({ params }: { params: SongParams }) {
               <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{song.title}</h1>
               <p className="mt-2 text-sm text-zinc-400">{song.artist}</p>
             </div>
-            <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-400">
+            <span className="rounded-full border-[3px] border-zinc-700 px-3 py-1 text-xs text-zinc-400">
               {charts.length} 个难度
             </span>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-zinc-400">
             {song.character && (
-              <span className="rounded-full border border-zinc-800 px-2.5 py-1">
+              <span className="rounded-full border-[3px] border-zinc-800 px-2.5 py-1">
                 角色：{song.character}
               </span>
             )}
             {song.bpm && (
-              <span className="rounded-full border border-zinc-800 px-2.5 py-1">
+              <span className="rounded-full border-[3px] border-zinc-800 px-2.5 py-1">
                 BPM {song.bpm}
               </span>
             )}
             {song.aliases.length > 0 && (
-              <span className="rounded-full border border-zinc-800 px-2.5 py-1">
+              <span className="rounded-full border-[3px] border-zinc-800 px-2.5 py-1">
                 别名：{song.aliases.map((alias) => alias.alias).join('、')}
               </span>
             )}
           </div>
         </header>
 
-        <ChartViewer charts={charts} title={song.title} artist={song.artist} />
+        <ChartViewer
+          charts={charts}
+          ratings={ratings}
+          canRate={Boolean(user)}
+          title={song.title}
+          artist={song.artist}
+        />
 
         <CommentSection songId={song.id} />
 
         <footer className="mt-16 border-t border-zinc-800 pt-6 text-xs text-zinc-600">
-          Cytus II 曲目与谱面版权归雷亚（Rayark）所有，本站仅用于课程学习与演示。
+          Cytus II 曲目与谱面版权归Rayark公司所有，本站仅用于课程学习与演示。
         </footer>
       </div>
     </main>
@@ -87,7 +100,7 @@ function SongSkeleton() {
         <div className="mt-8 h-10 w-2/3 rounded bg-zinc-900" />
         <div className="mt-4 h-4 w-40 rounded bg-zinc-900" />
         <div className="mt-8 h-12 rounded-xl bg-zinc-900" />
-        <div className="mt-4 aspect-[512/420] rounded-xl border border-zinc-800 bg-zinc-900/40" />
+        <div className="mt-4 aspect-[512/420] rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40" />
       </div>
     </main>
   );

@@ -1,6 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { rateChart } from '@/app/songs/[id]/rating-actions';
+import type { ChartRatingSummary } from '@/lib/ratings';
 import { DifficultyBadge } from './difficulty-badge';
 
 export type ChartSummary = {
@@ -55,7 +58,7 @@ function ComingSoonChart() {
         y="212"
         textAnchor="middle"
         fill="#27BF8D"
-        fontFamily="'Rajdhani', 'Segoe UI', sans-serif"
+        style={{ fontFamily: "var(--font-electrolize), 'Segoe UI', sans-serif" }}
         fontSize="34"
         fontWeight="700"
         letterSpacing="1"
@@ -73,10 +76,14 @@ function sanitizeFileName(value: string) {
 
 export function ChartViewer({
   charts,
+  ratings,
+  canRate,
   title,
   artist,
 }: {
   charts: ChartSummary[];
+  ratings: Record<string, ChartRatingSummary>;
+  canRate: boolean;
   title: string;
   artist: string;
 }) {
@@ -85,7 +92,7 @@ export function ChartViewer({
     return chaos >= 0 ? chaos : 0;
   });
   const [page, setPage] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState({ done: 0, total: 0 });
   const [downloadError, setDownloadError] = useState('');
@@ -93,9 +100,18 @@ export function ChartViewer({
   const chart = charts[selected] ?? charts[0];
 
   useEffect(() => {
-    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', onChange);
-    return () => document.removeEventListener('fullscreenchange', onChange);
+    const element = viewerRef.current;
+    if (!element) return;
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      setZoom((current) => {
+        const next = current - event.deltaY * 0.001;
+        return Math.min(3, Math.max(0.5, Number(next.toFixed(2))));
+      });
+    };
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
   }, []);
 
   useEffect(() => {
@@ -114,7 +130,7 @@ export function ChartViewer({
 
   if (!chart) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-sm text-zinc-400">
+      <div className="rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 p-8 text-sm text-zinc-400">
         暂无可查看的谱面。
       </div>
     );
@@ -125,15 +141,6 @@ export function ChartViewer({
   const selectChart = (index: number) => {
     setSelected(index);
     setPage(0);
-  };
-
-  const toggleFullscreen = async () => {
-    if (!viewerRef.current) return;
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-    } else {
-      await viewerRef.current.requestFullscreen();
-    }
   };
 
   const imageUrl = `/api/charts/${chart.id}/${page}`;
@@ -265,12 +272,15 @@ export function ChartViewer({
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 px-4 py-3">
         <div className="text-xs text-zinc-400">
           <span className="text-zinc-200">{chart.difficultyName}</span>
           {chart.difficultyLevel ? ` ${chart.difficultyLevel}` : ''}
           <span className="mx-2 text-zinc-700">|</span>
           {comingSoon ? 'coming s∞n' : `${chart.pageCount} 页 · ${chart.noteCount} 音符`}
+          {!comingSoon && (
+            <span className="ml-2 hidden text-zinc-600 sm:inline">Ctrl + 滚轮缩放</span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!comingSoon && (
@@ -295,124 +305,153 @@ export function ChartViewer({
               </button>
             </>
           )}
-          <button
-            type="button"
-            onClick={toggleFullscreen}
-            className="rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-cyan-500/60 hover:text-cyan-200"
-          >
-            {isFullscreen ? '退出全屏' : '全屏'}
-          </button>
+          <div className="flex items-center gap-2 rounded-md border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-400">
+            <span className="font-mono tabular-nums text-zinc-300">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              disabled={zoom === 1}
+              title="Ctrl + 滚轮缩放，拖动滚动条平移"
+              className="text-zinc-300 transition enabled:hover:text-cyan-200 disabled:opacity-40"
+            >
+              重置
+            </button>
+          </div>
         </div>
       </div>
 
       {downloadError && <p className="mt-2 text-xs text-rose-300">{downloadError}</p>}
 
-      <div
-        ref={viewerRef}
-        className="mt-4 overflow-auto rounded-xl border border-zinc-800 bg-[#050608]"
-      >
-        {comingSoon ? (
-          <ComingSoonChart />
-        ) : (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="mx-auto mt-4 flex w-full flex-col gap-3 lg:w-[calc(75%_+_5rem)] lg:max-w-full lg:flex-row lg:items-stretch lg:gap-4">
+        <div
+          ref={viewerRef}
+          className="min-w-0 flex-1 overflow-auto rounded-xl border-[3px] border-zinc-800 bg-[#050608]"
+        >
+          {comingSoon ? (
+            <ComingSoonChart />
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={imageUrl}
               alt={`${chart.difficultyName} 第 ${page + 1} 页`}
-              className="block h-auto w-full max-w-none"
+              style={{ width: `${zoom * 100}%` }}
+              className="mx-auto block h-auto max-w-none"
             />
-          </>
+          )}
+        </div>
+
+        {!comingSoon && (
+          <div className="shrink-0 lg:w-16 lg:min-w-16 lg:max-w-16">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 p-2 lg:h-full lg:flex-col lg:flex-nowrap lg:items-stretch lg:justify-start lg:gap-1">
+              {PAGE_STEPS.slice(0, 2).map((step) => {
+                const disabled = page + step < 0;
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => jumpPage(step)}
+                    disabled={disabled}
+                    aria-label={`后退 ${Math.abs(step)} 页`}
+                    className="w-9 rounded-md border border-zinc-700 px-0 py-1.5 font-mono text-sm tabular-nums text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40 lg:w-full"
+                  >
+                    {step}
+                  </button>
+                );
+              })}
+
+              <span className="overflow-hidden whitespace-nowrap px-1 text-center text-xs tabular-nums text-zinc-400 lg:w-full lg:px-0 lg:py-1 lg:text-[11px]">
+                {page + 1} / {chart.pageCount}
+              </span>
+
+              {PAGE_STEPS.slice(2).map((step) => {
+                const disabled = page + step > chart.pageCount - 1;
+                return (
+                  <button
+                    key={step}
+                    type="button"
+                    onClick={() => jumpPage(step)}
+                    disabled={disabled}
+                    aria-label={`前进 ${step} 页`}
+                    className="w-9 rounded-md border border-zinc-700 px-0 py-1.5 font-mono text-sm tabular-nums text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40 lg:w-full"
+                  >
+                    +{step}
+                  </button>
+                );
+              })}
+
+              <input
+                type="range"
+                min={0}
+                max={chart.pageCount - 1}
+                value={page}
+                onChange={(event) => setPage(Number(event.target.value))}
+                aria-label="选择页码"
+                className="h-1.5 w-full cursor-pointer accent-cyan-400 lg:h-auto lg:min-h-0 lg:flex-1 lg:w-1.5 lg:self-center lg:[direction:rtl] lg:[writing-mode:vertical-lr]"
+              />
+            </div>
+          </div>
         )}
       </div>
 
-      {!comingSoon && (
-        <div className="mt-4 flex flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-1.5">
-            {PAGE_STEPS.map((step) => {
-              const target = page + step;
-              const disabled = target < 0 || target > chart.pageCount - 1;
-              return (
-                <button
-                  key={step}
-                  type="button"
-                  onClick={() => jumpPage(step)}
-                  disabled={disabled}
-                  aria-label={step < 0 ? `后退 ${Math.abs(step)} 页` : `前进 ${step} 页`}
-                  className="rounded-md border border-zinc-700 px-2.5 py-1.5 font-mono text-sm tabular-nums text-zinc-300 transition enabled:hover:border-cyan-500/60 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {step > 0 ? `+${step}` : step}
-                </button>
-              );
-            })}
-            <span className="ml-2 text-xs text-zinc-400">
-              {page + 1} / {chart.pageCount}
-            </span>
-          </div>
-
-          <div className="flex flex-1 items-center gap-3 sm:justify-center">
-            <input
-              type="range"
-              min={0}
-              max={chart.pageCount - 1}
-              value={page}
-              onChange={(event) => setPage(Number(event.target.value))}
-              aria-label="选择页码"
-              className="h-1.5 w-full max-w-xs cursor-pointer accent-cyan-400"
-            />
-          </div>
-        </div>
-      )}
-
-      <ChartRating chartId={chart.id} />
+      <ChartRating
+        key={chart.id}
+        chartId={chart.id}
+        initial={ratings[chart.id] ?? { average: 0, count: 0, mine: 0 }}
+        canRate={canRate}
+      />
     </section>
   );
 }
 
-const RATING_STORAGE_PREFIX = 'cytus-chart-rating:';
-const ratingListeners = new Set<() => void>();
-
-function subscribeRating(onChange: () => void) {
-  ratingListeners.add(onChange);
-  window.addEventListener('storage', onChange);
-  return () => {
-    ratingListeners.delete(onChange);
-    window.removeEventListener('storage', onChange);
-  };
-}
-
-function setRatingValue(chartId: string, value: number) {
-  const key = `${RATING_STORAGE_PREFIX}${chartId}`;
-  if (value > 0) {
-    window.localStorage.setItem(key, String(value));
-  } else {
-    window.localStorage.removeItem(key);
-  }
-  ratingListeners.forEach((listener) => listener());
-}
-
-function ChartRating({ chartId }: { chartId: string }) {
-  const rating = useSyncExternalStore(
-    subscribeRating,
-    () => Number(window.localStorage.getItem(`${RATING_STORAGE_PREFIX}${chartId}`)) || 0,
-    () => 0,
-  );
+function ChartRating({
+  chartId,
+  initial,
+  canRate,
+}: {
+  chartId: string;
+  initial: ChartRatingSummary;
+  canRate: boolean;
+}) {
+  const [summary, setSummary] = useState(initial);
   const [hover, setHover] = useState(0);
+  const [error, setError] = useState('');
+  const [pending, startTransition] = useTransition();
 
   const choose = (value: number) => {
-    setRatingValue(chartId, value === rating ? 0 : value);
+    if (!canRate || pending) return;
+    setError('');
+    startTransition(async () => {
+      const result = await rateChart(chartId, value);
+      if (result.ok) {
+        setSummary({ average: result.average, count: result.count, mine: result.mine });
+      } else {
+        setError(result.error);
+      }
+    });
   };
 
-  const active = hover || rating;
+  const active = hover || summary.mine;
+  const average = summary.count > 0 ? summary.average.toFixed(1) : '0.0';
 
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 px-4 py-3">
       <div>
         <p className="text-sm text-zinc-200">谱面评分</p>
         <p className="mt-1 text-xs text-zinc-500">
-          点击星星打分（0–5 星），再点同一颗可取消；评分暂存于本机。
+          {canRate
+            ? summary.mine > 0
+              ? `你给出了 ${summary.mine} 星，点击其他星星可修改`
+              : '点击星星给出你的评分'
+            : '登录后即可参与评分'}
         </p>
+        {error && <p className="mt-1 text-xs text-rose-300">{error}</p>}
       </div>
-      <div className="flex items-center gap-1" onMouseLeave={() => setHover(0)}>
+      <div
+        className={`flex flex-wrap items-center justify-end gap-1 ${pending ? 'opacity-70' : ''}`}
+        onMouseLeave={() => setHover(0)}
+      >
         {[1, 2, 3, 4, 5].map((value) => (
           <button
             key={value}
@@ -421,9 +460,10 @@ function ChartRating({ chartId }: { chartId: string }) {
             onMouseEnter={() => setHover(value)}
             onFocus={() => setHover(value)}
             onBlur={() => setHover(0)}
+            disabled={!canRate || pending}
             aria-label={`${value} 星`}
-            aria-pressed={rating === value}
-            className="rounded p-0.5 transition hover:scale-110"
+            aria-pressed={summary.mine === value}
+            className="rounded p-0.5 transition enabled:hover:scale-110 disabled:cursor-not-allowed"
           >
             <svg
               viewBox="0 0 24 24"
@@ -435,9 +475,17 @@ function ChartRating({ chartId }: { chartId: string }) {
             </svg>
           </button>
         ))}
-        <span className="ml-2 w-14 text-xs text-zinc-400">
-          {rating > 0 ? `${rating} / 5` : '未评分'}
+        <span className="ml-2 whitespace-nowrap text-xs tabular-nums text-zinc-300">
+          {average} / 5
         </span>
+        <span className="ml-2 whitespace-nowrap text-xs text-zinc-500">
+          {summary.count} 位玩家给出了评分，平均为 {average}
+        </span>
+        {!canRate && (
+          <Link href="/account" className="ml-1 text-xs text-cyan-300 hover:text-cyan-200">
+            去登录
+          </Link>
+        )}
       </div>
     </div>
   );

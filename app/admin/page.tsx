@@ -143,7 +143,7 @@ async function EventsTab() {
 
   return (
     <div className="mt-5 space-y-6">
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 sm:p-5">
+      <section className="rounded-xl border-[3px] border-zinc-800 bg-zinc-900/30 p-4 sm:p-5">
         <h2 className="text-sm font-semibold text-zinc-200">新建活动</h2>
         <form action={createEventAction} className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-zinc-400 sm:col-span-2">
@@ -198,12 +198,12 @@ async function EventsTab() {
       </section>
 
       {events.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-zinc-800 py-12 text-center text-sm text-zinc-500">
+        <p className="rounded-xl border-[3px] border-dashed border-zinc-800 py-12 text-center text-sm text-zinc-500">
           还没有活动
         </p>
       ) : (
         events.map((event) => (
-          <article key={event.id} className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 sm:p-5">
+          <article key={event.id} className="rounded-xl border-[3px] border-zinc-800 bg-zinc-900/30 p-4 sm:p-5">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -313,7 +313,7 @@ async function ReportsTab({ actor }: { actor: { id: string; role: string } }) {
 
   if (groups.length === 0) {
     return (
-      <p className="mt-8 rounded-xl border border-dashed border-zinc-800 py-14 text-center text-sm text-zinc-500">
+      <p className="mt-8 rounded-xl border-[3px] border-dashed border-zinc-800 py-14 text-center text-sm text-zinc-500">
         暂无待处理举报
       </p>
     );
@@ -322,7 +322,7 @@ async function ReportsTab({ actor }: { actor: { id: string; role: string } }) {
   return (
     <div className="mt-5 space-y-4">
       {groups.map((group) => (
-        <article key={group.commentId} className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 sm:p-5">
+        <article key={group.commentId} className="rounded-xl border-[3px] border-zinc-800 bg-zinc-900/30 p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="rounded-full bg-rose-500/15 px-2 py-0.5 font-medium text-rose-200">
               待处理 {group.pendingCount}
@@ -470,7 +470,7 @@ async function UsersTab({
         <p className="text-xs text-zinc-500">Admin 仅可查看 Player 列表。</p>
       )}
 
-      <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-800">
+      <div className="mt-3 overflow-x-auto rounded-xl border-[3px] border-zinc-800">
         <table className="w-full min-w-[680px] text-left text-sm">
           <thead className="bg-zinc-900/70 text-xs text-zinc-500">
             <tr>
@@ -541,7 +541,7 @@ function AdminSkeleton() {
   return (
     <div className="mt-8 animate-pulse">
       <div className="h-8 w-40 rounded bg-zinc-900" />
-      <div className="mt-6 h-64 rounded-xl border border-zinc-800 bg-zinc-900/40" />
+      <div className="mt-6 h-64 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40" />
     </div>
   );
 }

@@ -27,12 +27,12 @@ export default function Home({ searchParams }: { searchParams: SearchParams }) {
         </Suspense>
 
         <header className="mt-8 border-b border-zinc-800 pb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">
-            Cytus II Chart Forum
-          </p>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-            找到你的下一张谱面
-          </h1>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">谱面查询器</h1>
+            <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan-400">
+              Chart Searcher
+            </span>
+          </div>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
             支持歌名、艺术家、角色、拼音全拼、拼音首字母与外号搜索。例：
             <span className="mx-1 text-zinc-200">bwfm-&gt;Bullet Waiting for Me</span>
@@ -137,12 +137,12 @@ async function SearchContent({ searchParams }: { searchParams: SearchParams }) {
       </div>
 
       {libraryCount === 0 ? (
-        <div className="mt-8 rounded-xl border border-amber-500/30 bg-amber-500/5 p-6 text-sm text-amber-200">
+        <div className="mt-8 rounded-xl border-[3px] border-amber-500/30 bg-amber-500/5 p-6 text-sm text-amber-200">
           数据库为空。请先在仓库根目录运行：
           <code className="mx-1 rounded bg-black/30 px-1.5 py-0.5">npm run db:import -- --all</code>
         </div>
       ) : total === 0 ? (
-        <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-400">
+        <div className="mt-8 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-400">
           没有找到匹配曲目。可以换一个歌名、拼音首字母、外号，或调整筛选条件。
         </div>
       ) : (
@@ -165,7 +165,7 @@ function SearchSkeleton() {
       <div className="h-[34px] w-full max-w-md rounded-full bg-zinc-900" />
       <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="h-40 rounded-xl border border-zinc-800 bg-zinc-900/40" />
+          <div key={index} className="h-40 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/40" />
         ))}
       </div>
     </div>

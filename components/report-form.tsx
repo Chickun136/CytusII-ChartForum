@@ -19,7 +19,7 @@ export function ReportForm({ commentId }: { commentId: string }) {
       </summary>
       <form
         action={formAction}
-        className="mt-2 w-full max-w-sm rounded-lg border border-zinc-800 bg-zinc-950/80 p-3"
+        className="mt-2 w-full max-w-sm rounded-lg border-[3px] border-zinc-800 bg-zinc-950/80 p-3"
       >
         <input type="hidden" name="commentId" value={commentId} />
         <textarea

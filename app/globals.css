@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-electrolize), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-electrolize), ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Cytus II 官方青色：中文官网站点主强调色 #01FEDD，辅助 #3FCEBB */
+@theme {
+  --color-cyan-200: #b3fff5;
+  --color-cyan-300: #6dffee;
+  --color-cyan-400: #01fedd;
+  --color-cyan-500: #00e0c6;
+  --color-cyan-600: #00bda8;
+}

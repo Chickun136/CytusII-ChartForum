@@ -10,6 +10,7 @@ export type CommentAuthor = {
 export type CommentView = {
   id: string;
   content: string;
+  imageUrl: string | null;
   createdAt: string;
   author: CommentAuthor;
   likeCount: number;
@@ -23,6 +24,7 @@ type CommentRow = {
   id: string;
   userId: string;
   content: string;
+  imageUrl: string | null;
   createdAt: Date;
   deletedAt: Date | null;
   deletedById: string | null;
@@ -36,6 +38,7 @@ function toView(row: CommentRow, viewerId?: string): CommentView {
   return {
     id: row.id,
     content: deleted ? '' : row.content,
+    imageUrl: deleted ? null : row.imageUrl,
     createdAt: row.createdAt.toISOString(),
     author: row.user,
     likeCount: row.likes.length,

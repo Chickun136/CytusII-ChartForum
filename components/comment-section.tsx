@@ -38,7 +38,7 @@ export async function CommentSection({ songId }: CommentSectionProps) {
       <div className="mt-5">
         {user ? (
           mutedUntil ? (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs leading-6 text-amber-200">
+            <div className="rounded-xl border-[3px] border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs leading-6 text-amber-200">
               您已被限制评论功能，{mutedUntil} 后方可正常发布评论。
             </div>
           ) : (
@@ -50,7 +50,7 @@ export async function CommentSection({ songId }: CommentSectionProps) {
             </div>
           )
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/30 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-[3px] border-zinc-800 bg-zinc-900/30 px-4 py-3">
             <p className="text-sm text-zinc-400">登录后可以评论、点赞和回复。</p>
             <Link
               href="/account"
@@ -63,7 +63,7 @@ export async function CommentSection({ songId }: CommentSectionProps) {
       </div>
 
       {comments.length === 0 ? (
-        <div className="mt-8 rounded-xl border border-dashed border-zinc-800 py-14 text-center">
+        <div className="mt-8 rounded-xl border-[3px] border-dashed border-zinc-800 py-14 text-center">
           <p className="text-sm text-zinc-400">还没有评论</p>
           <p className="mt-1 text-xs text-zinc-600">来写第一条评论吧。</p>
         </div>
@@ -142,9 +142,28 @@ function CommentBody({
           </p>
         ) : (
           <>
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">
-              {comment.content}
-            </p>
+            {comment.content && (
+              <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">
+                {comment.content}
+              </p>
+            )}
+            {comment.imageUrl && (
+              <a
+                href={comment.imageUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="查看大图"
+                className="mt-2 block w-fit"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={comment.imageUrl}
+                  alt="评论图片"
+                  loading="lazy"
+                  className="max-h-60 w-auto max-w-full rounded-lg border-[3px] border-zinc-800 object-contain transition-colors hover:border-cyan-500/60"
+                />
+              </a>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-4">
               <LikeButton comment={comment} loggedIn={loggedIn} />
               {!compact && !muted && <ReplyBox songId={songId} commentId={comment.id} />}
