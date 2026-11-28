@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { SiteHeader, SiteHeaderSkeleton } from '@/components/site-header';
 import { prisma } from '@/lib/prisma';
@@ -54,24 +55,27 @@ async function EventsList() {
   return (
     <ul className="mt-8 space-y-4">
       {events.map((event) => (
-        <li
-          key={event.id}
-          className="rounded-xl border-[3px] border-zinc-800 bg-zinc-900/30 p-5"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[11px] font-medium text-cyan-200">
-              已发布
-            </span>
-            <h2 className="text-base font-semibold text-zinc-100">{event.title}</h2>
-          </div>
-          <p className="mt-1 text-xs text-zinc-500">
-            {formatDateTime(event.startAt)} 至 {formatDateTime(event.endAt)}
-          </p>
-          {event.description && (
-            <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">
-              {event.description}
+        <li key={event.id}>
+          <Link
+            href={`/events/${event.id}`}
+            className="block rounded-xl border-[3px] border-zinc-800 bg-zinc-900/30 p-5 transition hover:border-cyan-500/50"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[11px] font-medium text-cyan-200">
+                已发布
+              </span>
+              <h2 className="text-base font-semibold text-zinc-100">{event.title}</h2>
+              <span className="ml-auto text-xs text-cyan-300/80">查看详情 →</span>
+            </div>
+            <p className="mt-1 text-xs text-zinc-500">
+              {formatDateTime(event.startAt)} 至 {formatDateTime(event.endAt)}
             </p>
-          )}
+            {event.description && (
+              <p className="mt-2 line-clamp-2 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">
+                {event.description}
+              </p>
+            )}
+          </Link>
         </li>
       ))}
     </ul>

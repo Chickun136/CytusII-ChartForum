@@ -18,8 +18,10 @@ export async function handleReportAction(formData: FormData) {
   const resolutionRaw = String(formData.get('resolution') ?? '').trim();
   const muteDaysRaw = Number(formData.get('muteDays') ?? 0);
 
-  if (!commentId) return;
-  if (!['dismiss', 'delete', 'delete_mute'].includes(action)) return;
+  if (!commentId) redirect('/admin?tab=reports&error=report_missing');
+  if (!['dismiss', 'delete', 'delete_mute'].includes(action)) {
+    redirect('/admin?tab=reports&error=report_action');
+  }
 
   const comment = await prisma.comment.findUnique({
     where: { id: commentId },
@@ -31,13 +33,15 @@ export async function handleReportAction(formData: FormData) {
       user: { select: { role: true } },
     },
   });
-  if (!comment) return;
-  if (!canHandleReport(actor.role, comment.user.role)) return;
+  if (!comment) redirect('/admin?tab=reports&error=report_missing');
+  if (!canHandleReport(actor.role, comment.user.role)) {
+    redirect('/admin?tab=reports&error=report_forbidden');
+  }
 
   const violation = action !== 'dismiss';
   let muteDays: number | null = null;
   if (action === 'delete_mute') {
-    if (!MUTE_OPTIONS.has(muteDaysRaw)) return;
+    if (!MUTE_OPTIONS.has(muteDaysRaw)) redirect('/admin?tab=reports&error=report_mute');
     muteDays = muteDaysRaw;
   }
 
@@ -49,7 +53,7 @@ export async function handleReportAction(formData: FormData) {
     where: { commentId, status: 'PENDING' },
     select: { reporterId: true },
   });
-  if (pending.length === 0) return;
+  if (pending.length === 0) redirect('/admin?tab=reports&error=report_handled');
 
   await prisma.$transaction(async (tx) => {
     if (violation) {
@@ -111,4 +115,9 @@ export async function handleReportAction(formData: FormData) {
   revalidatePath('/admin');
   revalidatePath(`/songs/${comment.songId}`);
   revalidatePath('/account');
+  redirect(
+    `/admin?tab=reports&notice=${
+      action === 'dismiss' ? 'report_dismissed' : action === 'delete' ? 'report_deleted' : 'report_muted'
+    }`,
+  );
 }

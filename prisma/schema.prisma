@@ -101,6 +101,8 @@ model User {
   reportsMade           Report[]       @relation("ReportReporter")
   reportsHandled        Report[]       @relation("ReportHandler")
   eventsCreated         Event[]
+  eventComments         EventComment[]
+  eventCommentsReviewed EventComment[] @relation("EventCommentReviewer")
   chartRatings          ChartRating[]
 
   @@index([role])
@@ -208,6 +210,29 @@ model Event {
   updatedAt   DateTime @updatedAt
 
   createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  comments  EventComment[]
 
   @@index([status, startAt])
+}
+
+model EventComment {
+  id           String    @id @default(cuid())
+  eventId      String
+  userId       String
+  content      String
+  imageUrl     String?
+  status       String    @default("NONE") // NONE / PENDING / APPROVED / REJECTED
+  submittedAt  DateTime?
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNote   String?
+  createdAt    DateTime  @default(now())
+
+  event      Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("EventCommentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([eventId, createdAt])
+  @@index([userId])
+  @@index([status])
 }

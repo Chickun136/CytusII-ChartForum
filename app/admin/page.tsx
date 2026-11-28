@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { setRoleAction } from '@/app/account/actions';
 import { createEventAction, setEventStatusAction, updateEventAction } from '@/app/admin/event-actions';
 import { handleReportAction } from '@/app/admin/report-actions';
+import { reviewEventTaskAction } from '@/app/events/[id]/task-actions';
 import { SiteHeader, SiteHeaderSkeleton } from '@/components/site-header';
 import { getCurrentUser } from '@/lib/auth';
 import { getReportQueue } from '@/lib/moderation';
@@ -24,6 +25,11 @@ const NOTICES: Record<string, string> = {
   published: '活动已发布。',
   withdrawn: '活动已撤回。',
   draft: '活动已转为草稿。',
+  approved: '任务已通过，已为该玩家发放 1 Capso。',
+  rejected: '任务已驳回。',
+  report_dismissed: '已判定为不违规，举报已关闭。',
+  report_deleted: '评论已删除，举报已处理。',
+  report_muted: '评论已删除并禁言，举报已处理。',
 };
 
 const ERRORS: Record<string, string> = {
@@ -32,6 +38,11 @@ const ERRORS: Record<string, string> = {
   dates: '请填写开始与结束时间。',
   range: '结束时间必须晚于开始时间。',
   missing: '活动不存在或已被删除。',
+  report_missing: '举报对应的评论不存在或已被删除。',
+  report_forbidden: '你没有权限处理该举报（Admin 只能处理 Player 的评论）。',
+  report_action: '处理方式无效，请重新选择。',
+  report_mute: '禁言天数无效，请选择 1 天、3 天或 1 周。',
+  report_handled: '该举报已被处理，请刷新后查看最新队列。',
 };
 
 const EVENT_STATUS_LABELS: Record<string, string> = {
@@ -66,10 +77,14 @@ async function AdminContent({ searchParams }: { searchParams: AdminSearchParams 
   if (!canAccessAdmin(user.role)) redirect('/account');
 
   const params = await searchParams;
-  const tab = params.tab === 'events' || params.tab === 'users' ? params.tab : 'reports';
+  const tab =
+    params.tab === 'events' || params.tab === 'users' || params.tab === 'tasks'
+      ? params.tab
+      : 'reports';
   const master = isMaster(user.role);
   const notice = params.notice ? NOTICES[params.notice] : null;
   const error = params.error ? ERRORS[params.error] : null;
+  const pendingTasks = await prisma.eventComment.count({ where: { status: 'PENDING' } });
 
   return (
     <section className="mt-8">
@@ -86,6 +101,9 @@ async function AdminContent({ searchParams }: { searchParams: AdminSearchParams 
         </TabLink>
         <TabLink href="/admin?tab=reports" active={tab === 'reports'}>
           举报队列
+        </TabLink>
+        <TabLink href="/admin?tab=tasks" active={tab === 'tasks'}>
+          任务审批{pendingTasks > 0 ? ` (${pendingTasks})` : ''}
         </TabLink>
         <TabLink href="/admin?tab=users" active={tab === 'users'}>
           用户
@@ -105,6 +123,7 @@ async function AdminContent({ searchParams }: { searchParams: AdminSearchParams 
 
       {tab === 'events' && <EventsTab />}
       {tab === 'reports' && <ReportsTab actor={user} />}
+      {tab === 'tasks' && <TasksTab />}
       {tab === 'users' && <UsersTab actor={user} roleParam={params.role} />}
     </section>
   );
@@ -308,6 +327,113 @@ async function EventsTab() {
   );
 }
 
+async function TasksTab() {
+  const tasks = await prisma.eventComment.findMany({
+    where: { status: 'PENDING' },
+    orderBy: { submittedAt: 'asc' },
+    take: 100,
+    include: {
+      user: { select: { nickname: true, role: true, capso: true } },
+      event: { select: { id: true, title: true } },
+    },
+  });
+
+  if (tasks.length === 0) {
+    return (
+      <p className="mt-8 rounded-xl border-[3px] border-dashed border-zinc-800 py-14 text-center text-sm text-zinc-500">
+        暂无待审批的任务提交
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-5 space-y-4">
+      <p className="text-xs text-zinc-500">
+        审批通过后，提交者账号将自动 +1 Capso；每个活动每人仅可获得一次奖励。
+      </p>
+      {tasks.map((task) => (
+        <article
+          key={task.id}
+          className="rounded-xl border-[3px] border-zinc-800 bg-zinc-900/30 p-4 sm:p-5"
+        >
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-200">
+              待审批
+            </span>
+            <Link
+              href={`/events/${task.event.id}`}
+              className="text-zinc-400 transition hover:text-cyan-200"
+            >
+              {task.event.title}
+            </Link>
+            <span className="text-zinc-600">
+              提交人 {task.user.nickname}（{roleLabel(task.user.role)} · 当前 {task.user.capso}{' '}
+              Capso）
+            </span>
+            {task.submittedAt && (
+              <span className="text-zinc-600">提交于 {formatDateTime(task.submittedAt)}</span>
+            )}
+          </div>
+
+          {task.content && (
+            <p className="mt-2 break-words text-sm leading-6 text-zinc-200">“{task.content}”</p>
+          )}
+
+          {task.imageUrl && (
+            <a
+              href={task.imageUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="查看大图"
+              className="mt-2 block w-fit"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={task.imageUrl}
+                alt="任务成果截图"
+                loading="lazy"
+                className="max-h-56 w-auto max-w-full rounded-lg border-[3px] border-zinc-800 object-contain"
+              />
+            </a>
+          )}
+
+          <form
+            action={reviewEventTaskAction}
+            className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-800 pt-3"
+          >
+            <input type="hidden" name="commentId" value={task.id} />
+            <label className="min-w-[14rem] flex-1 text-[11px] text-zinc-500">
+              审批说明（可选）
+              <input
+                name="reviewNote"
+                maxLength={200}
+                placeholder="例如：截图与任务要求不符"
+                className="mt-1 block w-full rounded-md border border-zinc-800 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-cyan-500/60"
+              />
+            </label>
+            <button
+              type="submit"
+              name="decision"
+              value="approve"
+              className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 transition hover:bg-emerald-400"
+            >
+              通过并 +1 Capso
+            </button>
+            <button
+              type="submit"
+              name="decision"
+              value="reject"
+              className="rounded-md border border-rose-500/40 px-3 py-1.5 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/10"
+            >
+              驳回
+            </button>
+          </form>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 async function ReportsTab({ actor }: { actor: { id: string; role: string } }) {
   const groups = await getReportQueue(actor);
 
@@ -376,7 +502,7 @@ async function ReportsTab({ actor }: { actor: { id: string; role: string } }) {
                 </select>
               </label>
               <label className="text-[11px] text-zinc-500">
-                禁言天数
+                禁言天数（仅“删除并禁言”时生效）
                 <select
                   name="muteDays"
                   className="mt-1 block rounded-md border border-zinc-800 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-cyan-500/60"

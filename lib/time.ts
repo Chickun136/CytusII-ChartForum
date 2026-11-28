@@ -37,3 +37,7 @@ export function toDateTimeLocalValue(value: string | Date) {
   )}:${pad(date.getMinutes())}`;
 }
 
+export function hasEventEnded(endAt: string | Date) {
+  return new Date(endAt).getTime() < Date.now();
+}
+
