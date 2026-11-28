@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   allowedDevOrigins: ["172.22.96.15"],
+  experimental: {
+    serverActions: {
+      // 原图上限 30 MB（前端会自动压缩到 1024px 后再上传），留出 multipart 开销
+      bodySizeLimit: "32mb",
+    },
+  },
   turbopack: {
     rules: {
       "*.css": {

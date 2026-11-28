@@ -14,7 +14,9 @@ type CommentFormProps = {
   submitLabel?: string;
 };
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 30 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const MAX_DIMENSION = 1024;
 
 async function isSupportedImage(file: File) {
   const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
@@ -31,6 +33,36 @@ async function isSupportedImage(file: File) {
   );
 }
 
+async function compressImage(file: File) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+  if (scale === 1 && file.size <= MAX_UPLOAD_BYTES) {
+    bitmap.close();
+    return file;
+  }
+
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    bitmap.close();
+    return file;
+  }
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, 'image/webp', 0.85);
+  });
+  if (!blob || blob.size >= file.size) return file;
+
+  const base = file.name.replace(/\.[^.]+$/, '');
+  return new File([blob], `${base}.webp`, { type: 'image/webp' });
+}
+
 export function CommentForm({
   songId,
   parentId,
@@ -44,36 +76,54 @@ export function CommentForm({
   );
   const [preview, setPreview] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const selectionRef = useRef(0);
   const imageInputId = useId();
 
   async function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
-    if (preview) URL.revokeObjectURL(preview);
-
     const input = event.target;
     const file = input.files?.[0];
-    if (!file) {
-      setPreview(null);
-      return;
-    }
+    const requestId = selectionRef.current + 1;
+    selectionRef.current = requestId;
+
+    if (preview) URL.revokeObjectURL(preview);
+    setPreview(null);
     setLocalError(null);
 
-    const reject = (message: string) => {
+    if (!file) return;
+    if (file.size > MAX_SOURCE_BYTES) {
       input.value = '';
-      setPreview(null);
-      setLocalError(message);
-    };
-
-    if (file.size > MAX_IMAGE_BYTES) {
-      reject('图片不能超过 5 MB。');
+      setLocalError('图片不能超过 30 MB。');
       return;
     }
     if (!(await isSupportedImage(file))) {
-      if (input.files?.[0] === file) reject('仅支持 PNG / JPG / WebP 图片。');
+      if (selectionRef.current !== requestId) return;
+      input.value = '';
+      setLocalError('仅支持 PNG / JPG / WebP 图片。');
       return;
     }
-    if (input.files?.[0] !== file) return;
-    setPreview(URL.createObjectURL(file));
+
+    setProcessing(true);
+    try {
+      const compressed = await compressImage(file);
+      if (selectionRef.current !== requestId) return;
+      if (compressed.size > MAX_UPLOAD_BYTES) {
+        input.value = '';
+        setLocalError('压缩后仍超过 5 MB，请换一张图片。');
+        return;
+      }
+      const transfer = new DataTransfer();
+      transfer.items.add(compressed);
+      input.files = transfer.files;
+      setPreview(URL.createObjectURL(compressed));
+    } catch {
+      if (selectionRef.current !== requestId) return;
+      input.value = '';
+      setLocalError('图片处理失败，请换一张图片重试。');
+    } finally {
+      if (selectionRef.current === requestId) setProcessing(false);
+    }
   }
 
   function clearImage() {
@@ -86,6 +136,10 @@ export function CommentForm({
     <form
       action={formAction}
       onSubmit={(event) => {
+        if (processing) {
+          event.preventDefault();
+          return;
+        }
         const form = event.currentTarget;
         const content = String(new FormData(form).get('content') ?? '').trim();
         const file = fileRef.current?.files?.[0];
@@ -132,7 +186,7 @@ export function CommentForm({
         <p className="mt-1.5 text-xs text-rose-300">{localError ?? state?.error}</p>
       )}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-zinc-600">最多 500 字 · 图片支持 PNG / JPG / WebP，≤ 5 MB</p>
+        <p className="text-xs text-zinc-600">最多 500 字 · 图片自动压缩至 1024px（原图 ≤ 30 MB）</p>
         <div className="flex items-center gap-2">
           <input
             ref={fileRef}
@@ -151,10 +205,10 @@ export function CommentForm({
           </label>
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || processing}
             className="rounded-lg bg-cyan-500 px-4 py-1.5 text-xs font-semibold text-zinc-950 transition hover:bg-cyan-400 disabled:cursor-wait disabled:opacity-60"
           >
-            {pending ? '发送中…' : submitLabel}
+            {processing ? '压缩中…' : pending ? '发送中…' : submitLabel}
           </button>
         </div>
       </div>
